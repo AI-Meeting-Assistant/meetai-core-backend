@@ -5,15 +5,15 @@ export class TimelineRepository {
   /**
    * Creates a single timeline data entry.
    */
-  async create(data: Prisma.TimelineDataUncheckedCreateInput): Promise<TimelineData> {
-    return prisma.timelineData.create({ data });
+  async create(data: Prisma.TimelineDataUncheckedCreateInput, tx?: Prisma.TransactionClient): Promise<TimelineData> {
+    return (tx ?? prisma).timelineData.create({ data });
   }
 
   /**
    * Fetches records where offsetMs is between startMs and endMs.
    */
-  async findDataInTimeWindow(meetingId: string, startMs: number, endMs: number): Promise<TimelineData[]> {
-    return prisma.timelineData.findMany({
+  async findDataInTimeWindow(meetingId: string, startMs: number, endMs: number, tx?: Prisma.TransactionClient): Promise<TimelineData[]> {
+    return (tx ?? prisma).timelineData.findMany({
       where: {
         meetingId,
         offsetMs: {
@@ -28,8 +28,8 @@ export class TimelineRepository {
   /**
    * Fetches all timeline data for a specific meeting, ordered by offsetMs ascending.
    */
-  async findAllByMeetingId(meetingId: string): Promise<TimelineData[]> {
-    return prisma.timelineData.findMany({
+  async findAllByMeetingId(meetingId: string, tx?: Prisma.TransactionClient): Promise<TimelineData[]> {
+    return (tx ?? prisma).timelineData.findMany({
       where: { meetingId },
       orderBy: { offsetMs: 'asc' },
     });

@@ -126,6 +126,8 @@ All routes are mounted under `/api/v1`. Protected routes require a `Authorizatio
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/health` | No | Liveness check |
+| POST | `/auth/register` | No | Register a new user and auto-create their organization |
+| POST | `/auth/login` | No | Login and receive a JWT token |
 | GET | `/meetings` | Yes | List meetings for the authenticated org |
 | POST | `/meetings` | Yes | Create a new meeting |
 | GET | `/meetings/:id` | Yes | Get full meeting analysis (meeting + timeline + alerts) |
@@ -216,7 +218,7 @@ Implement phases in order. Do not implement a later phase before its dependencie
 | Phase | Focus | Key Deliverables |
 |-------|-------|-----------------|
 | **1** *(Done)* | Infrastructure & Boilerplate | Express app, Prisma schema, repositories, services, routes, Redis clients |
-| **2** | Real Authentication | JWT validation in `requireAuth`, RBAC enforcement (`MODERATOR` vs `VIEWER`) |
+| **2** *(Done)* | Real Authentication | JWT validation in `requireAuth`, RBAC enforcement (`MODERATOR` vs `VIEWER`) |
 | **3** | Core AI Pipeline | Fusion Engine (sliding window), Rule Engine (threshold rules + `MeetingAlert` creation) |
 | **4** | Real-Time Delivery | WebSocket Gateway wired to Rule Engine output; SSE `/:id/events` wired to live alerts |
 | **5** | LLM Integration | LLM Client, post-meeting summary generation triggered on `COMPLETED` status |

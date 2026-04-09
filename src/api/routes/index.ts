@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { healthRouter } from './health.routes';
+import { authRouter } from './auth.routes';
 import { meetingRouter } from './meeting.routes';
 import { timelineRouter } from './timeline.routes';
 import { alertRouter } from './alert.routes';
@@ -14,6 +15,7 @@ export const apiRouter = Router();
 
 // ── Sub-Routers ───────────────────────────────────────────────────────────────
 apiRouter.use('/health', healthRouter);
+apiRouter.use('/auth', authRouter);
 apiRouter.use('/meetings', meetingRouter);
 apiRouter.use('/timeline', timelineRouter);
 apiRouter.use('/alerts', alertRouter);

@@ -1,12 +1,12 @@
 import prisma from '../prisma.client';
-import { Organization } from '@prisma/client';
+import { Organization, Prisma } from '@prisma/client';
 
 export class OrganizationRepository {
   /**
    * Finds an organization by ID.
    */
-  async findById(id: string): Promise<Organization | null> {
-    return prisma.organization.findUnique({
+  async findById(id: string, tx?: Prisma.TransactionClient): Promise<Organization | null> {
+    return (tx ?? prisma).organization.findUnique({
       where: { id },
     });
   }
@@ -14,9 +14,16 @@ export class OrganizationRepository {
   /**
    * Fetches all organizations where isActive is true.
    */
-  async findActive(): Promise<Organization[]> {
-    return prisma.organization.findMany({
+  async findActive(tx?: Prisma.TransactionClient): Promise<Organization[]> {
+    return (tx ?? prisma).organization.findMany({
       where: { isActive: true },
     });
+  }
+
+  /**
+   * Creates a new organization.
+   */
+  async create(data: Prisma.OrganizationCreateInput, tx?: Prisma.TransactionClient): Promise<Organization> {
+    return (tx ?? prisma).organization.create({ data });
   }
 }

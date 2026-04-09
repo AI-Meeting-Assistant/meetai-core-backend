@@ -5,7 +5,6 @@ import { requireAuth } from '../middlewares/requireAuth';
 export const meetingRouter = Router();
 const meetingController = new MeetingController();
 
-// Apply mock authentication to all meeting routes
 meetingRouter.use(requireAuth);
 
 meetingRouter.get('/', meetingController.getMeetings);
