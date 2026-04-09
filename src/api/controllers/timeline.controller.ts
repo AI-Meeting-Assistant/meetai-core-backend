@@ -19,7 +19,7 @@ export class TimelineController {
         throw new AppError('Meeting ID is required', 400);
       }
 
-      const timelineData = await timelineService.getTimelineByMeetingId(meetingId);
+      const timelineData = await timelineService.getMeetingTimeline(meetingId);
 
       res.status(200).json({
         success: true,

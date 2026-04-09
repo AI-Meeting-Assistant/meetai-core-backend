@@ -96,3 +96,127 @@ Pay special attention to these two systems during core logic configuration:
 - Processes merged Fusion data.
 - Checks against **Thresholds** (e.g., "Focus < 40% for 3 minutes").
 - Fires notifications to the Moderator's Dashboard via SSE/WebSocket if anomalies are detected.
+
+---
+
+## 6. HTTP Response Format Contract
+
+All HTTP responses in this project follow a strict, standardized format. **Never deviate from these shapes.**
+
+**Success Response:**
+```json
+{ "success": true, "data": <payload>, "message": "Human-readable string" }
+```
+
+**Error Response** (emitted automatically by `globalErrorHandler`):
+```json
+{ "success": false, "error": { "code": <httpStatusCode>, "message": "Human-readable string" } }
+```
+
+- `data` may be an object, array, or primitive depending on the endpoint.
+- Never add extra top-level keys (e.g., no `meta`, `pagination`, `status` fields at the root level).
+- Never construct error responses manually in controllers or services. Always `throw new AppError(...)`.
+
+---
+
+## 7. API Endpoint Reference
+
+All routes are mounted under `/api/v1`. Protected routes require a `Authorization: Bearer <token>` header.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | No | Liveness check |
+| GET | `/meetings` | Yes | List meetings for the authenticated org |
+| POST | `/meetings` | Yes | Create a new meeting |
+| GET | `/meetings/:id` | Yes | Get full meeting analysis (meeting + timeline + alerts) |
+| PATCH | `/meetings/:id` | Yes | Update meeting status |
+| GET | `/meetings/:id/export` | Yes | Export meeting report (base64, format via `?format=pdf`) |
+| GET | `/meetings/:id/events` | Yes | SSE stream for live anomaly events |
+| GET | `/timeline/:meetingId` | Yes | Get all timeline data entries for a meeting |
+| GET | `/alerts/:meetingId` | Yes | Get all alerts triggered during a meeting |
+
+---
+
+## 8. Environment Variables Reference
+
+All environment variables are loaded via `dotenv` in `app.ts` and `server.ts`. The `.env` file must never be committed.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string (Supabase) |
+| `REDIS_URL` | Yes | Redis connection string (default: `redis://localhost:6379`) |
+| `PORT` | No | HTTP server port (default: `3000`) |
+| `NODE_ENV` | No | Runtime environment (`development` / `production`) |
+| `JWT_SECRET` | Yes | Secret key for signing/verifying JWTs (used when real auth is implemented) |
+| `LLM_API_KEY` | Yes | API key for the LLM provider (Groq / OpenAI) |
+| `LLM_BASE_URL` | No | Base URL for the LLM provider (enables provider-agnostic setup via OpenAI SDK) |
+
+---
+
+## 9. File & Module Naming Conventions
+
+Follow the existing patterns exactly. Do not introduce new naming styles.
+
+| Layer | Pattern | Example |
+|-------|---------|---------|
+| Controller | `<domain>.controller.ts` | `meeting.controller.ts` |
+| Service | `<domain>.service.ts` | `meeting.service.ts` |
+| Repository | `<domain>.repository.ts` | `meeting.repository.ts` |
+| Routes | `<domain>.routes.ts` | `meeting.routes.ts` |
+| Infrastructure client | `<name>.client.ts` | `redis.client.ts`, `llm.client.ts` |
+
+**Additional rules:**
+- One class per file. The class name must match the file name (PascalCase of the filename).
+- Services are instantiated at the module level inside controllers (`const meetingService = new MeetingService()`), not injected via constructor.
+- Infrastructure clients (Redis, Prisma, LLM) are **singletons** — exported as a single instance from their module file.
+
+---
+
+## 10. TypeScript Standards
+
+- **No `any`.** Use `unknown` and narrow with type guards, or define a proper interface/type.
+- **Always annotate return types** on service and repository methods explicitly (e.g., `Promise<Meeting>`, not inferred).
+- **Prisma-generated types are the source of truth.** Do not define manual interfaces that duplicate `Meeting`, `MeetingAlert`, `TimelineData`, etc. Import them directly from `@prisma/client`.
+- **Use `Prisma.XxxCreateInput` / `Prisma.XxxUncheckedCreateInput`** for create payloads passed into repositories.
+- Keep `tsconfig.json` in strict mode. Do not relax compiler options to silence errors.
+
+---
+
+## 11. MeetingStatus State Machine
+
+Valid status transitions are enforced in `MeetingService.updateMeetingStatus`. Respect this state machine in all future code:
+
+```
+SCHEDULED → IN_PROGRESS → COMPLETED
+```
+
+- A `COMPLETED` meeting **cannot** transition to any other status.
+- The `startedAt` field should be set when transitioning to `IN_PROGRESS`.
+- The `endedAt` field should be set when transitioning to `COMPLETED`.
+
+---
+
+## 12. Layer Responsibility Contract
+
+Each layer has a strict, single responsibility. Do not let logic bleed across layers.
+
+| Layer | Responsibility | Must NOT |
+|-------|---------------|----------|
+| **Repository** | Raw Prisma/DB calls only | Contain business rules, throw `AppError`, call other repositories |
+| **Service** | Orchestrate repositories, enforce business rules, emit events | Make direct `res`/`req` references, contain raw Prisma queries |
+| **Controller** | Parse `req`, call one service method, send one `res` | Contain business logic, query the DB, throw errors that bypass `globalErrorHandler` |
+| **Middleware** | Cross-cutting concerns (auth, error handling, logging) | Contain domain/business logic |
+
+---
+
+## 13. Phase Roadmap
+
+Implement phases in order. Do not implement a later phase before its dependencies are in place.
+
+| Phase | Focus | Key Deliverables |
+|-------|-------|-----------------|
+| **1** *(Done)* | Infrastructure & Boilerplate | Express app, Prisma schema, repositories, services, routes, Redis clients |
+| **2** | Real Authentication | JWT validation in `requireAuth`, RBAC enforcement (`MODERATOR` vs `VIEWER`) |
+| **3** | Core AI Pipeline | Fusion Engine (sliding window), Rule Engine (threshold rules + `MeetingAlert` creation) |
+| **4** | Real-Time Delivery | WebSocket Gateway wired to Rule Engine output; SSE `/:id/events` wired to live alerts |
+| **5** | LLM Integration | LLM Client, post-meeting summary generation triggered on `COMPLETED` status |

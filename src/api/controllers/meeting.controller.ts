@@ -19,7 +19,7 @@ export class MeetingController {
       const limit = parseInt(req.query.limit as string) || 10;
       const status = req.query.status as string;
 
-      const meetings = await meetingService.findAllByOrganization(orgId, page, limit, status);
+      const meetings = await meetingService.listMeetings(orgId, { page, limit, status });
 
       res.status(200).json({
         success: true,
@@ -45,7 +45,7 @@ export class MeetingController {
       const { title, agenda } = req.body;
       if (!title) throw new AppError('Title is required', 400);
 
-      const result = await meetingService.createMeeting(orgId, userId, { title, agenda });
+      const result = await meetingService.createMeeting({ organizationId: orgId, userId, title, agenda });
 
       res.status(201).json({
         success: true,
@@ -69,7 +69,7 @@ export class MeetingController {
       const { id } = req.params;
       if (!id) throw new AppError('Meeting ID is required', 400);
 
-      const meetingDetails = await meetingService.getMeetingDetails(id, orgId);
+      const meetingDetails = await meetingService.getFullMeetingAnalysis(id);
 
       res.status(200).json({
         success: true,
@@ -96,7 +96,7 @@ export class MeetingController {
       const { status } = req.body;
       if (!status) throw new AppError('Status is required for update', 400);
 
-      const updatedMeeting = await meetingService.updateMeeting(id, orgId, { status });
+      const updatedMeeting = await meetingService.updateMeetingStatus(id, status);
 
       res.status(200).json({
         success: true,
@@ -122,7 +122,7 @@ export class MeetingController {
 
       const format = req.query.format as string || 'pdf';
 
-      const exportData = await meetingService.generateExport(id, orgId, format);
+      const exportData = await meetingService.exportMeetingReport(id, format);
 
       res.status(200).json({
         success: true,
