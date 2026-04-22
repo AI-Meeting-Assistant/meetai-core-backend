@@ -70,7 +70,7 @@ model Meeting {
   title                String
   agenda               String?       @db.Text // Toplantı öncesi girileceği için isteğe bağlı (optional) olabilir
   timelineResolutionMs Int           @default(2000) @map("timeline_resolution_ms") // Örn: 2000
-  status               MeetingStatus @default(IN_PROGRESS)
+  status               MeetingStatus @default(SCHEDULED)
   aiSummary            String?       @db.Text @map("ai_summary")
   
   startedAt            DateTime?     @map("started_at")

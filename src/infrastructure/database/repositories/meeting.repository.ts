@@ -32,10 +32,19 @@ export class MeetingRepository {
   /**
    * Updates the meeting status.
    */
-  async updateStatus(id: string, status: MeetingStatus, tx?: Prisma.TransactionClient): Promise<Meeting> {
+  async updateStatus(
+    id: string,
+    status: MeetingStatus,
+    timestamps?: { startedAt?: Date | null; endedAt?: Date | null },
+    tx?: Prisma.TransactionClient,
+  ): Promise<Meeting> {
     return (tx ?? prisma).meeting.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        ...(timestamps?.startedAt !== undefined ? { startedAt: timestamps.startedAt } : {}),
+        ...(timestamps?.endedAt !== undefined ? { endedAt: timestamps.endedAt } : {}),
+      },
     });
   }
 

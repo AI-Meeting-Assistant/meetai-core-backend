@@ -4,7 +4,14 @@ import { UserRepository } from '../../infrastructure/database/repositories/user.
 import { TimelineRepository } from '../../infrastructure/database/repositories/timeline.repository';
 import { AlertRepository } from '../../infrastructure/database/repositories/alert.repository';
 import { AppError } from '../../utils/errors/AppError';
-import { Prisma, MeetingStatus } from '@prisma/client';
+import { Prisma, MeetingStatus, Meeting } from '@prisma/client';
+import { StreamTicketService } from './stream-ticket.service';
+
+interface MeetingStatusUpdateResult {
+  meeting: Meeting;
+  streamTicket?: string;
+  ticketExpiresAt?: string;
+}
 
 export class MeetingService {
   private meetingRepository: MeetingRepository;
@@ -12,6 +19,7 @@ export class MeetingService {
   private userRepository: UserRepository;
   private timelineRepository: TimelineRepository;
   private alertRepository: AlertRepository;
+  private streamTicketService: StreamTicketService;
 
   constructor() {
     this.meetingRepository = new MeetingRepository();
@@ -19,6 +27,7 @@ export class MeetingService {
     this.userRepository = new UserRepository();
     this.timelineRepository = new TimelineRepository();
     this.alertRepository = new AlertRepository();
+    this.streamTicketService = new StreamTicketService();
   }
 
   async listMeetings(organizationId?: string, queryParams?: any) {
@@ -51,7 +60,12 @@ export class MeetingService {
       throw new AppError('User does not belong to the specified organization', 403);
     }
 
-    const meeting = await this.meetingRepository.create(data);
+    const createData: Prisma.MeetingUncheckedCreateInput = {
+      ...data,
+      status: data.status ?? MeetingStatus.SCHEDULED,
+    };
+
+    const meeting = await this.meetingRepository.create(createData);
 
     return meeting;
   }
@@ -76,7 +90,7 @@ export class MeetingService {
     };
   }
 
-  async updateMeetingStatus(meetingId: string, status: MeetingStatus, preferences?: any) {
+  async updateMeetingStatus(meetingId: string, status: MeetingStatus, preferences?: any): Promise<MeetingStatusUpdateResult> {
     if (!meetingId || !status) {
       throw new AppError('Meeting ID and Status are required', 400);
     }
@@ -91,9 +105,32 @@ export class MeetingService {
       throw new AppError('Cannot change status of a COMPLETED meeting', 400);
     }
 
-    const updatedMeeting = await this.meetingRepository.updateStatus(meetingId, status);
+    if (meeting.status === 'SCHEDULED' && status === 'COMPLETED') {
+      throw new AppError('Invalid status transition: SCHEDULED cannot move directly to COMPLETED', 400);
+    }
 
-    return updatedMeeting;
+    const timestamps: { startedAt?: Date | null; endedAt?: Date | null } = {};
+    if (status === 'IN_PROGRESS' && !meeting.startedAt) {
+      timestamps.startedAt = new Date();
+    }
+    if (status === 'COMPLETED') {
+      timestamps.endedAt = new Date();
+    }
+
+    const updatedMeeting = await this.meetingRepository.updateStatus(meetingId, status, timestamps);
+    const result: MeetingStatusUpdateResult = { meeting: updatedMeeting };
+
+    if (status === 'IN_PROGRESS') {
+      const ticket = await this.streamTicketService.ensureTicket(meetingId);
+      result.streamTicket = ticket.streamTicket;
+      result.ticketExpiresAt = ticket.ticketExpiresAt;
+    }
+
+    if (status === 'COMPLETED') {
+      await this.streamTicketService.clearTicket(meetingId);
+    }
+
+    return result;
   }
 
   async exportMeetingReport(meetingId: string, format: string) {

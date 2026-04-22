@@ -131,7 +131,7 @@ All routes are mounted under `/api/v1`. Protected routes require a `Authorizatio
 | GET | `/meetings` | Yes | List meetings for the authenticated org |
 | POST | `/meetings` | Yes | Create a new meeting |
 | GET | `/meetings/:id` | Yes | Get full meeting analysis (meeting + timeline + alerts) |
-| PATCH | `/meetings/:id` | Yes | Update meeting status |
+| PATCH | `/meetings/:id` | Yes | Update meeting status (`IN_PROGRESS` transition issues stream ticket) |
 | GET | `/meetings/:id/export` | Yes | Export meeting report (base64, format via `?format=pdf`) |
 | GET | `/meetings/:id/events` | Yes | SSE stream for live anomaly events |
 | GET | `/timeline/:meetingId` | Yes | Get all timeline data entries for a meeting |
@@ -152,6 +152,47 @@ All environment variables are loaded via `dotenv` in `app.ts` and `server.ts`. T
 | `JWT_SECRET` | Yes | Secret key for signing/verifying JWTs (used when real auth is implemented) |
 | `LLM_API_KEY` | Yes | API key for the LLM provider (Groq / OpenAI) |
 | `LLM_BASE_URL` | No | Base URL for the LLM provider (enables provider-agnostic setup via OpenAI SDK) |
+
+---
+
+## 8.1 Stream Ticket Security Contract
+
+To protect Python AI workers from asymmetric compute attacks, media ingest is guarded by a short-lived server-issued stream ticket.
+
+- Moderator starts a meeting via `PATCH /api/v1/meetings/:id` with `status=IN_PROGRESS`.
+- Backend generates a UUID stream ticket (`streamTicket`).
+- Backend stores it in Redis with TTL:
+  - key: `meeting:<meetingId>:ticket`
+  - command: `SETEX meeting:<meetingId>:ticket 18000 <streamTicket>`
+- While meeting status is `IN_PROGRESS`, Node backend is responsible for ticket TTL refresh.
+- Refresh strategy: every `300` seconds (5 minutes), run `EXPIRE meeting:<meetingId>:ticket 18000`.
+- Backend returns ticket fields in the same PATCH success response.
+- Frontend includes `meetingId` + `streamTicket` in each media upload request to Python ingest.
+- Python worker validates ticket in Redis before model inference:
+  - mismatch/expired -> immediate `401 Unauthorized`
+  - valid -> continue media processing
+
+**Why this exists:**
+- Prevent unauthorized users from sending high-rate fake media to expensive GPU/CPU workers.
+- Keep validation latency low (Redis lookup) and avoid per-request DB checks in Python.
+
+**PATCH success response when status changes to IN_PROGRESS:**
+```json
+{
+  "success": true,
+  "data": {
+    "meeting": {
+      "id": "meeting_uuid",
+      "status": "IN_PROGRESS"
+    },
+    "streamTicket": "ticket_uuid",
+    "ticketExpiresAt": "2026-04-22T18:00:00.000Z"
+  },
+  "message": "Meeting updated successfully"
+}
+```
+
+For non-`IN_PROGRESS` transitions, `streamTicket` and `ticketExpiresAt` may be omitted.
 
 ---
 
@@ -194,6 +235,8 @@ SCHEDULED → IN_PROGRESS → COMPLETED
 
 - A `COMPLETED` meeting **cannot** transition to any other status.
 - The `startedAt` field should be set when transitioning to `IN_PROGRESS`.
+- On `IN_PROGRESS` transition, backend must issue a `streamTicket` and persist it in Redis using `meeting:<meetingId>:ticket` with TTL `18000` seconds.
+- While `IN_PROGRESS`, backend should refresh ticket TTL every `300` seconds to keep long meetings alive without per-chunk Redis writes.
 - The `endedAt` field should be set when transitioning to `COMPLETED`.
 
 ---
