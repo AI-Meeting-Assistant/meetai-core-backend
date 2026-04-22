@@ -15,5 +15,6 @@ meetingRouter.post('/', meetingController.createMeeting);
 meetingRouter.get('/:id', meetingController.getMeetingById);
 meetingRouter.patch('/:id', meetingController.updateMeeting);
 meetingRouter.post('/:id/start', requireRole([Role.MODERATOR]), meetingController.startMeeting);
+meetingRouter.post('/:id/end', requireRole([Role.MODERATOR]), meetingController.endMeeting);
 meetingRouter.get('/:id/export', meetingController.exportMeeting);
 meetingRouter.get('/:id/events', meetingController.streamEvents);

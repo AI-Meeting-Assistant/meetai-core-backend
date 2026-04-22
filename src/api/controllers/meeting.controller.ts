@@ -88,7 +88,7 @@ export class MeetingController {
 
   /**
    * PATCH /:id
-   * Updates the meeting status
+   * Updates mutable meeting fields (title, agenda)
    */
   async updateMeeting(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -98,16 +98,41 @@ export class MeetingController {
       const { id } = req.params;
       if (!id) throw new AppError('Meeting ID is required', 400);
 
-      const { status } = req.body;
-      if (!status) throw new AppError('Status is required for update', 400);
+      const { title, agenda } = req.body;
 
-      const updatedMeeting = await meetingService.updateMeetingStatus(id, status);
+      const updatedMeeting = await meetingService.updateMeetingFields(id, orgId, { title, agenda });
 
-      log.info('Meeting status updated', { meetingId: id, status });
+      log.info('Meeting fields updated', { meetingId: id });
       res.status(200).json({
         success: true,
         data: updatedMeeting,
         message: 'Meeting updated successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /:id/end
+   * Validates org/user/status, transitions meeting to COMPLETED, clears stream ticket.
+   */
+  async endMeeting(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const orgId = req.user?.organizationId;
+      const userId = req.user?.id;
+      if (!orgId || !userId) throw new AppError('User context required', 403);
+
+      const { id } = req.params;
+      if (!id) throw new AppError('Meeting ID is required', 400);
+
+      const updatedMeeting = await meetingService.endMeeting(id, orgId, userId);
+
+      log.info('Meeting ended', { meetingId: id, userId });
+      res.status(200).json({
+        success: true,
+        data: updatedMeeting,
+        message: 'Meeting ended successfully',
       });
     } catch (error) {
       next(error);

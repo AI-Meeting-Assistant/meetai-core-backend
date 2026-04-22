@@ -7,12 +7,6 @@ import { AppError } from '../../utils/errors/AppError';
 import { Prisma, MeetingStatus, Meeting } from '@prisma/client';
 import { StreamTicketService, TicketIssueResult } from './ticket.service';
 
-interface MeetingStatusUpdateResult {
-  meeting: Meeting;
-  streamTicket?: string;
-  ticketExpiresAt?: string;
-}
-
 export class MeetingService {
   private meetingRepository: MeetingRepository;
   private organizationRepository: OrganizationRepository;
@@ -90,47 +84,21 @@ export class MeetingService {
     };
   }
 
-  async updateMeetingStatus(meetingId: string, status: MeetingStatus, preferences?: any): Promise<MeetingStatusUpdateResult> {
-    if (!meetingId || !status) {
-      throw new AppError('Meeting ID and Status are required', 400);
-    }
-
+  async updateMeetingFields(meetingId: string, orgId: string, fields: { title?: string; agenda?: string }): Promise<Meeting> {
     const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
     if (!meeting) {
       throw new AppError('Meeting not found', 404);
     }
 
-    // Basic state transition validation
-    if (meeting.status === 'COMPLETED' && status !== 'COMPLETED') {
-      throw new AppError('Cannot change status of a COMPLETED meeting', 400);
+    if (meeting.organizationId !== orgId) {
+      throw new AppError('Forbidden: Meeting does not belong to your organization', 403);
     }
 
-    if (meeting.status === 'SCHEDULED' && status === 'COMPLETED') {
-      throw new AppError('Invalid status transition: SCHEDULED cannot move directly to COMPLETED', 400);
+    if (!fields.title && !fields.agenda) {
+      throw new AppError('At least one field (title or agenda) must be provided', 400);
     }
 
-    const timestamps: { startedAt?: Date | null; endedAt?: Date | null } = {};
-    if (status === 'IN_PROGRESS' && !meeting.startedAt) {
-      timestamps.startedAt = new Date();
-    }
-    if (status === 'COMPLETED') {
-      timestamps.endedAt = new Date();
-    }
-
-    const updatedMeeting = await this.meetingRepository.updateStatus(meetingId, status, timestamps);
-    const result: MeetingStatusUpdateResult = { meeting: updatedMeeting };
-
-    if (status === 'IN_PROGRESS') {
-      const ticket = await this.streamTicketService.ensureTicket(meetingId);
-      result.streamTicket = ticket.streamTicket;
-      result.ticketExpiresAt = ticket.ticketExpiresAt;
-    }
-
-    if (status === 'COMPLETED') {
-      await this.streamTicketService.clearTicket(meetingId);
-    }
-
-    return result;
+    return this.meetingRepository.updateFields(meetingId, fields);
   }
 
   async startMeeting(meetingId: string, orgId: string, userId: string): Promise<TicketIssueResult> {
@@ -154,6 +122,30 @@ export class MeetingService {
     await this.meetingRepository.updateStatus(meetingId, 'IN_PROGRESS', { startedAt: new Date() });
 
     return this.streamTicketService.issueTicket(meetingId);
+  }
+
+    async endMeeting(meetingId: string, orgId: string, userId: string): Promise<Meeting> {
+    const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
+    if (!meeting) {
+      throw new AppError('Meeting not found', 404);
+    }
+
+    if (meeting.organizationId !== orgId) {
+      throw new AppError('Forbidden: Meeting does not belong to your organization', 403);
+    }
+
+    if (meeting.userId !== userId) {
+      throw new AppError('Forbidden: Only the meeting moderator can end this meeting', 403);
+    }
+
+    if (meeting.status !== 'IN_PROGRESS') {
+      throw new AppError(`Meeting cannot be ended from status: ${meeting.status}`, 409);
+    }
+
+    const updatedMeeting = await this.meetingRepository.updateStatus(meetingId, 'COMPLETED', { endedAt: new Date() });
+    await this.streamTicketService.clearTicket(meetingId);
+
+    return updatedMeeting;
   }
 
   async exportMeetingReport(meetingId: string, format: string) {

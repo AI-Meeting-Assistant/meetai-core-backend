@@ -49,6 +49,16 @@ export class MeetingRepository {
   }
 
   /**
+   * Updates mutable meeting fields (title, agenda).
+   */
+  async updateFields(id: string, fields: { title?: string; agenda?: string }, tx?: Prisma.TransactionClient): Promise<Meeting> {
+    return (tx ?? prisma).meeting.update({
+      where: { id },
+      data: fields,
+    });
+  }
+
+  /**
    * Updates the aiSummary text field.
    */
   async updateAiSummary(id: string, summary: string, tx?: Prisma.TransactionClient): Promise<Meeting> {
