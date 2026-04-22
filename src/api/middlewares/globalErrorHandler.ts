@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../utils/errors/AppError';
+import { Logger } from '../../utils/logger';
+
+const log = new Logger('GlobalErrorHandler');
 
 /**
  * Global Error Handler Middleware
@@ -10,12 +13,13 @@ import { AppError } from '../../utils/errors/AppError';
  */
 export const globalErrorHandler = (
   err: Error,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void => {
   // Known operational error thrown via AppError
   if (err instanceof AppError) {
+    log.warn(err.message, { code: err.statusCode, method: req.method, path: req.path });
     res.status(err.statusCode).json({
       success: false,
       error: {
@@ -27,7 +31,7 @@ export const globalErrorHandler = (
   }
 
   // Unknown / programming error — never leak internal details to the client
-  console.error('[globalErrorHandler] Unhandled error:', err);
+  log.error('Unhandled error', { message: err.message, stack: err.stack, method: req.method, path: req.path });
 
   res.status(500).json({
     success: false,

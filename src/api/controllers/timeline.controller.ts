@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { TimelineService } from '../../core/services/timeline.service';
 import { AppError } from '../../utils/errors/AppError';
+import { Logger } from '../../utils/logger';
 
 const timelineService = new TimelineService();
+const log = new Logger('TimelineController');
 
 export class TimelineController {
   
@@ -21,6 +23,7 @@ export class TimelineController {
 
       const timelineData = await timelineService.getMeetingTimeline(meetingId);
 
+      log.info('Timeline fetched', { meetingId, count: timelineData.length });
       res.status(200).json({
         success: true,
         data: timelineData,

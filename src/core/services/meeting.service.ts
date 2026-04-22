@@ -5,7 +5,7 @@ import { TimelineRepository } from '../../infrastructure/database/repositories/t
 import { AlertRepository } from '../../infrastructure/database/repositories/alert.repository';
 import { AppError } from '../../utils/errors/AppError';
 import { Prisma, MeetingStatus, Meeting } from '@prisma/client';
-import { StreamTicketService } from './stream-ticket.service';
+import { StreamTicketService, TicketIssueResult } from './ticket.service';
 
 interface MeetingStatusUpdateResult {
   meeting: Meeting;
@@ -131,6 +131,29 @@ export class MeetingService {
     }
 
     return result;
+  }
+
+  async startMeeting(meetingId: string, orgId: string, userId: string): Promise<TicketIssueResult> {
+    const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
+    if (!meeting) {
+      throw new AppError('Meeting not found', 404);
+    }
+
+    if (meeting.organizationId !== orgId) {
+      throw new AppError('Forbidden: Meeting does not belong to your organization', 403);
+    }
+
+    if (meeting.userId !== userId) {
+      throw new AppError('Forbidden: Only the meeting moderator can start this meeting', 403);
+    }
+
+    if (meeting.status !== 'SCHEDULED') {
+      throw new AppError(`Meeting cannot be started from status: ${meeting.status}`, 409);
+    }
+
+    await this.meetingRepository.updateStatus(meetingId, 'IN_PROGRESS', { startedAt: new Date() });
+
+    return this.streamTicketService.issueTicket(meetingId);
   }
 
   async exportMeetingReport(meetingId: string, format: string) {

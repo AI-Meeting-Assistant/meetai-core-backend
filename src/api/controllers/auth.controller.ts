@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../../core/services/auth.service';
 import { AppError } from '../../utils/errors/AppError';
+import { Logger } from '../../utils/logger';
 
 const authService = new AuthService();
+const log = new Logger('AuthController');
 
 export class AuthController {
   /**
@@ -19,6 +21,7 @@ export class AuthController {
 
       const result = await authService.register(fullName, email, password, organizationName);
 
+      log.info('User registered', { email, organizationName });
       res.status(201).json({
         success: true,
         data: result,
@@ -43,6 +46,7 @@ export class AuthController {
 
       const result = await authService.login(email, password);
 
+      log.info('User logged in', { email });
       res.status(200).json({
         success: true,
         data: result,

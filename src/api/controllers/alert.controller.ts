@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { AlertService } from '../../core/services/alert.service';
 import { AppError } from '../../utils/errors/AppError';
+import { Logger } from '../../utils/logger';
 
 const alertService = new AlertService();
+const log = new Logger('AlertController');
 
 export class AlertController {
 
@@ -21,6 +23,7 @@ export class AlertController {
 
       const alerts = await alertService.getAlertsByMeetingId(meetingId);
 
+      log.info('Alerts fetched', { meetingId, count: alerts.length });
       res.status(200).json({
         success: true,
         data: alerts,

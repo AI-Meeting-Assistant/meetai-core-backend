@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { MeetingService } from '../../core/services/meeting.service';
 import { AppError } from '../../utils/errors/AppError';
+import { Logger } from '../../utils/logger';
 
 const meetingService = new MeetingService();
+const log = new Logger('MeetingController');
 
 export class MeetingController {
 
@@ -21,6 +23,7 @@ export class MeetingController {
 
       const meetings = await meetingService.listMeetings(orgId, { page, limit, status });
 
+      log.info('Meetings fetched', { orgId, count: meetings.length });
       res.status(200).json({
         success: true,
         data: meetings,
@@ -47,6 +50,7 @@ export class MeetingController {
 
       const result = await meetingService.createMeeting({ organizationId: orgId, userId, title, agenda });
 
+      log.info('Meeting created', { meetingId: result.id, orgId, userId, title });
       res.status(201).json({
         success: true,
         data: result,
@@ -71,6 +75,7 @@ export class MeetingController {
 
       const meetingDetails = await meetingService.getFullMeetingAnalysis(id);
 
+      log.info('Meeting analysis fetched', { meetingId: id, orgId });
       res.status(200).json({
         success: true,
         data: meetingDetails,
@@ -98,6 +103,7 @@ export class MeetingController {
 
       const updatedMeeting = await meetingService.updateMeetingStatus(id, status);
 
+      log.info('Meeting status updated', { meetingId: id, status });
       res.status(200).json({
         success: true,
         data: updatedMeeting,
@@ -124,10 +130,37 @@ export class MeetingController {
 
       const exportData = await meetingService.exportMeetingReport(id, format);
 
+      log.info('Meeting export generated', { meetingId: id, format });
       res.status(200).json({
         success: true,
         data: exportData,
         message: 'Export generated successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /:id/start
+   * Validates org/user/status, transitions meeting to IN_PROGRESS, issues a stream ticket.
+   */
+  async startMeeting(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const orgId = req.user?.organizationId;
+      const userId = req.user?.id;
+      if (!orgId || !userId) throw new AppError('User context required', 403);
+
+      const { id } = req.params;
+      if (!id) throw new AppError('Meeting ID is required', 400);
+
+      const result = await meetingService.startMeeting(id, orgId, userId);
+
+      log.info('Meeting started', { meetingId: id, userId });
+      res.status(202).json({
+        success: true,
+        data: result,
+        message: 'Meeting started — stream ticket issued',
       });
     } catch (error) {
       next(error);
@@ -155,12 +188,14 @@ export class MeetingController {
       res.flushHeaders();
 
       // Placeholder dummy event to confirm connection
+      log.info('SSE client connected', { meetingId: id, orgId });
       res.write(`data: ${JSON.stringify({ type: 'CONNECTED', meetingId: id })}\n\n`);
 
       // TODO: Register this response object to a global SSE manager or Redis Pub/Sub listener
       // to stream live events as they happen from the Rule Engine.
 
       req.on('close', () => {
+        log.info('SSE client disconnected', { meetingId: id });
         // TODO: Clean up resources/listeners when client disconnects
       });
     } catch (error) {

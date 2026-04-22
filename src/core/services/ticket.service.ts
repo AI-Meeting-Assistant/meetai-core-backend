@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { redisClient } from '../../infrastructure/redis/redis.client';
 import { AppError } from '../../utils/errors/AppError';
 
-interface TicketIssueResult {
+export interface TicketIssueResult {
   streamTicket: string;
   ticketExpiresAt: string;
 }
