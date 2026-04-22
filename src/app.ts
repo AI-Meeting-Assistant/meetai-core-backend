@@ -1,10 +1,12 @@
 import 'dotenv/config';
 import express, { Application } from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 
 import { apiRouter } from './api/routes/index';
 import { globalErrorHandler } from './api/middlewares/globalErrorHandler';
 import { notFound } from './api/middlewares/notFound';
+import { swaggerSpec } from './config/swagger';
 
 const app: Application = express();
 
@@ -12,6 +14,9 @@ const app: Application = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ── Swagger UI ────────────────────────────────────────────────────────────────
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ── Routes (Facade) ───────────────────────────────────────────────────────────
 app.use('/api/v1', apiRouter);

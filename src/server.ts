@@ -9,6 +9,7 @@ const server = http.createServer(app);
 server.listen(PORT, () => {
   console.log(`[server] Running on http://localhost:${PORT}`);
   console.log(`[server] Environment: ${process.env.NODE_ENV ?? 'development'}`);
+  console.log(`[server] API Docs available at http://localhost:${PORT}/api/docs`);
 });
 
 // ── Graceful Shutdown ─────────────────────────────────────────────────────────
