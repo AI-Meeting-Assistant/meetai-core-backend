@@ -46,9 +46,17 @@ export class MeetingController {
       if (!orgId || !userId) throw new AppError('User context required', 403);
 
       const { title, agenda } = req.body;
+      let { timelineResolutionMs } = req.body;
       if (!title) throw new AppError('Title is required', 400);
+      timelineResolutionMs = Number.isFinite(timelineResolutionMs) ? timelineResolutionMs : 2000;
 
-      const result = await meetingService.createMeeting({ organizationId: orgId, userId, title, agenda });
+      const result = await meetingService.createMeeting({
+        organizationId: orgId,
+        userId,
+        title,
+        agenda,
+        timelineResolutionMs,
+      });
 
       log.info('Meeting created', { meetingId: result.id, orgId, userId, title });
       res.status(201).json({

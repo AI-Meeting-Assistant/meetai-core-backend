@@ -79,6 +79,17 @@ Interactive docs: `http://localhost:3000/api/docs` (Swagger UI)
 
 Protected routes require `Authorization: Bearer <token>`.
 
+`POST /meetings` body:
+```json
+{
+    "title": "Q2 Planning Session",
+    "agenda": "Review OKRs, assign owners, set deadlines",
+    "timeResolutionMs": 2000
+}
+```
+
+`timeResolutionMs` is optional; default is `2000`.
+
 ---
 
 ## Project Structure

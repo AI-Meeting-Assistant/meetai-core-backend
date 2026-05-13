@@ -35,7 +35,7 @@ export class MeetingService {
     return meetings;
   }
 
-  async createMeeting(data: Prisma.MeetingUncheckedCreateInput) {
+  async createMeeting(data: Prisma.MeetingUncheckedCreateInput): Promise<Meeting> {
     if (!data.organizationId || !data.userId) {
       throw new AppError('Organization ID and User ID are required', 400);
     }

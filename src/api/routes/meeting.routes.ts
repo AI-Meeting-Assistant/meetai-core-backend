@@ -84,6 +84,11 @@ meetingRouter.get('/', meetingController.getMeetings);
  *                 type: string
  *                 nullable: true
  *                 example: Review OKRs, assign owners, set deadlines
+ *               timeResolutionMs:
+ *                 type: integer
+ *                 default: 2000
+ *                 example: 2000
+ *                 description: Optional timeline resolution in milliseconds
  *     responses:
  *       201:
  *         description: Meeting created successfully
