@@ -59,6 +59,8 @@ npm run dev
 
 Base URL: `http://localhost:3000/api/v1`
 
+Interactive docs: `http://localhost:3000/api/docs` (Swagger UI)
+
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/health` | No | Liveness check |
@@ -66,10 +68,12 @@ Base URL: `http://localhost:3000/api/v1`
 | POST | `/auth/login` | No | Login, receive JWT |
 | GET | `/meetings` | Yes | List org meetings |
 | POST | `/meetings` | Yes | Create a meeting |
-| GET | `/meetings/:id` | Yes | Full meeting analysis |
-| PATCH | `/meetings/:id` | Yes | Update meeting status |
-| GET | `/meetings/:id/export` | Yes | Export meeting report |
-| GET | `/meetings/:id/events` | Yes | SSE stream for live alerts |
+| GET | `/meetings/:id` | Yes | Full meeting analysis (meeting + timeline + alerts) |
+| PATCH | `/meetings/:id` | Yes | Update meeting fields (title, agenda) |
+| POST | `/meetings/:id/start` | Yes (MODERATOR) | `SCHEDULED → IN_PROGRESS`, issues stream ticket |
+| POST | `/meetings/:id/end` | Yes (MODERATOR) | `IN_PROGRESS → COMPLETED`, clears stream ticket |
+| GET | `/meetings/:id/export` | Yes | Export meeting report (base64, `?format=pdf`) |
+| GET | `/meetings/:id/events` | Yes | SSE stream for live anomaly alerts |
 | GET | `/timeline/:meetingId` | Yes | Meeting timeline data |
 | GET | `/alerts/:meetingId` | Yes | Meeting alerts |
 
@@ -94,8 +98,11 @@ src/
 │   ├── redis/           # Redis client + Pub/Sub subscriber
 │   ├── websocket/       # WebSocket gateway (Phase 4)
 │   └── llm-client/      # LLM API integration (Phase 5)
+├── config/
+│   └── swagger.ts       # Swagger/OpenAPI spec config
 └── utils/
-    └── errors/          # AppError custom error class
+    ├── errors/          # AppError custom error class
+    └── logger.ts        # Centralized logger (LOG_LEVEL env controlled)
 ```
 
 ---
