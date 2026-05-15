@@ -6,6 +6,8 @@ import { AlertRepository } from '../../infrastructure/database/repositories/aler
 import { AppError } from '../../utils/errors/AppError';
 import { Prisma, MeetingStatus, Meeting } from '@prisma/client';
 import { StreamTicketService, TicketIssueResult } from './ticket.service';
+import { fusionEngineRegistry } from '../fusion/fusion.registry';
+import { sseManager } from '../../infrastructure/websocket/sse.manager';
 
 export class MeetingService {
   private meetingRepository: MeetingRepository;
@@ -121,6 +123,8 @@ export class MeetingService {
 
     await this.meetingRepository.updateStatus(meetingId, 'IN_PROGRESS', { startedAt: new Date() });
 
+    fusionEngineRegistry.start(meetingId, meeting.timelineResolutionMs);
+
     return this.streamTicketService.issueTicket(meetingId);
   }
 
@@ -144,6 +148,9 @@ export class MeetingService {
 
     const updatedMeeting = await this.meetingRepository.updateStatus(meetingId, 'COMPLETED', { endedAt: new Date() });
     await this.streamTicketService.clearTicket(meetingId);
+
+    fusionEngineRegistry.stop(meetingId);
+    sseManager.unsubscribeAll(meetingId);
 
     return updatedMeeting;
   }

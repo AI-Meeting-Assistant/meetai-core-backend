@@ -1,10 +1,13 @@
 import 'dotenv/config';
 import http from 'http';
 import app from './app';
+import { fusionEngineRegistry } from './core/fusion/fusion.registry';
 
 const PORT = process.env.PORT ?? 3000;
 
 const server = http.createServer(app);
+
+fusionEngineRegistry.initialize();
 
 server.listen(PORT, () => {
   console.log(`[server] Running on http://localhost:${PORT}`);

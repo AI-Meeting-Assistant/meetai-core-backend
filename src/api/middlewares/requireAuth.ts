@@ -23,11 +23,17 @@ declare global {
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('Unauthorized: Token required', 401);
+    let token: string | undefined;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (typeof req.query.token === 'string') {
+      token = req.query.token;
     }
 
-    const token = authHeader.split(' ')[1];
+    if (!token) {
+      throw new AppError('Unauthorized: Token required', 401);
+    }
     
     if (!process.env.JWT_SECRET) {
       throw new AppError('Server Configuration Error: JWT_SECRET not found', 500);

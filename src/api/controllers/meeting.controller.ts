@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { MeetingService } from '../../core/services/meeting.service';
 import { AppError } from '../../utils/errors/AppError';
 import { Logger } from '../../utils/logger';
+import { sseManager } from '../../infrastructure/websocket/sse.manager';
+import { SseEventType } from '../../types/sse-events';
 
 const meetingService = new MeetingService();
 const log = new Logger('MeetingController');
@@ -245,16 +247,13 @@ export class MeetingController {
       // Flush headers so client connects immediately
       res.flushHeaders();
 
-      // Placeholder dummy event to confirm connection
       log.info('SSE client connected', { meetingId: id, orgId });
-      res.write(`data: ${JSON.stringify({ type: 'CONNECTED', meetingId: id })}\n\n`);
-
-      // TODO: Register this response object to a global SSE manager or Redis Pub/Sub listener
-      // to stream live events as they happen from the Rule Engine.
+      sseManager.subscribe(id, res);
+      sseManager.publish(id, SseEventType.CONNECTED, { meetingId: id });
 
       req.on('close', () => {
+        sseManager.unsubscribe(id, res);
         log.info('SSE client disconnected', { meetingId: id });
-        // TODO: Clean up resources/listeners when client disconnects
       });
     } catch (error) {
       next(error);
