@@ -67,4 +67,11 @@ export class MeetingRepository {
       data: { aiSummary: summary },
     });
   }
+
+  /**
+   * Permanently deletes a meeting. Child timeline and alert rows are removed via DB cascade.
+   */
+  async delete(id: string, tx?: Prisma.TransactionClient): Promise<Meeting> {
+    return (tx ?? prisma).meeting.delete({ where: { id } });
+  }
 }

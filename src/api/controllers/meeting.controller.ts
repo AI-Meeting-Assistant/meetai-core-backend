@@ -122,6 +122,31 @@ export class MeetingController {
   }
 
   /**
+   * DELETE /:id
+   * Permanently deletes a meeting and its related data. MODERATOR only; not allowed while IN_PROGRESS.
+   */
+  async deleteMeeting(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const orgId = req.user?.organizationId;
+      const userId = req.user?.id;
+      if (!orgId || !userId) throw new AppError('User context required', 403);
+
+      const { id } = req.params;
+      if (!id) throw new AppError('Meeting ID is required', 400);
+
+      await meetingService.deleteMeeting(id, orgId, userId);
+
+      log.info('Meeting deleted', { meetingId: id, userId });
+      res.status(200).json({
+        success: true,
+        message: 'Meeting deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * POST /:id/end
    * Validates org/user/status, transitions meeting to COMPLETED, clears stream ticket.
    */

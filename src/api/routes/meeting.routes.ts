@@ -233,6 +233,58 @@ meetingRouter.patch('/:id', meetingController.updateMeeting);
 
 /**
  * @openapi
+ * /meetings/{id}:
+ *   delete:
+ *     tags:
+ *       - Meetings
+ *     summary: Delete a meeting
+ *     description: Permanently deletes a meeting and all related timeline data and alerts. MODERATOR only. Cannot delete while IN_PROGRESS.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The meeting ID
+ *     responses:
+ *       200:
+ *         description: Meeting deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Not a MODERATOR, or not the meeting's moderator
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Meeting not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Meeting is in IN_PROGRESS status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+meetingRouter.delete('/:id', requireRole([Role.MODERATOR]), meetingController.deleteMeeting);
+
+/**
+ * @openapi
  * /meetings/{id}/start:
  *   post:
  *     tags:
