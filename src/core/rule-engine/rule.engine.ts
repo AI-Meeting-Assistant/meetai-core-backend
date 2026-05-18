@@ -5,8 +5,8 @@ import { Logger } from '../../utils/logger';
 const log = new Logger('RuleEngine');
 // import { AlertRepository } from '../../infrastructure/database/repositories/alert.repository';
 
-const FOCUS_THRESHOLD = 0.4;
-const SPEAKING_RATE_THRESHOLD = 30;
+const FOCUS_THRESHOLD = 0.5;
+const SPEAKING_RATE_THRESHOLD = 0.4;
 const AGENDA_DEVIATION_THRESHOLD = 0.5;
 const WINDOW_SIZE = 6;
 
@@ -100,12 +100,13 @@ class RuleEngine {
   private evaluateSpeakingRateRule(meetingId: string, chunk: FusedChunk): void {
     const ratio = chunk.audio.vadSpeechRatioPercent;
     if (ratio === null) return;
+    const ratioPoint = ratio / 100;
 
     const historyKey = `${meetingId}:SPEAKING_RATE`;
     const alertKey = `${meetingId}:SPEAKING_RATE_DROP`;
 
     const scores = this.history.get(historyKey) ?? [];
-    scores.push(ratio);
+    scores.push(ratioPoint);
     if (scores.length > WINDOW_SIZE) scores.shift();
     this.history.set(historyKey, scores);
 
@@ -117,7 +118,7 @@ class RuleEngine {
     if (avg < SPEAKING_RATE_THRESHOLD && !active) {
       log.info('SPEAKING_RATE_DROP triggered', { meetingId, avg, offsetMs: chunk.offsetMs });
       sseManager.publish(meetingId, SseEventType.SPEAKING_RATE_DROP, {
-        avg: parseFloat(avg.toFixed(2)),
+        avg: parseFloat(avg.toFixed(4)),
         offsetMs: chunk.offsetMs,
       });
       this.alertActive.set(alertKey, true);
@@ -130,7 +131,7 @@ class RuleEngine {
     } else if (avg >= SPEAKING_RATE_THRESHOLD && active) {
       log.info('SPEAKING_RATE_RECOVERED triggered', { meetingId, avg, offsetMs: chunk.offsetMs });
       sseManager.publish(meetingId, SseEventType.SPEAKING_RATE_RECOVERED, {
-        avg: parseFloat(avg.toFixed(2)),
+        avg: parseFloat(avg.toFixed(4)),
         offsetMs: chunk.offsetMs,
       });
       this.alertActive.set(alertKey, false);
