@@ -1,4 +1,6 @@
 import { FusedChunk } from '../../types/sse-events';
+import { prisma } from '../../infrastructure/database/prisma.client';
+import { AppError } from '../../utils/errors/AppError';
 
 interface AudioChunk {
   meetingId: string
@@ -72,6 +74,17 @@ export class FusionEngine {
     };
 
     this.buffer.delete(bucket);
+
+    prisma.timelineData.create({
+      data: {
+        meetingId: this.meetingId,
+        offsetMs: fused.offsetMs,
+        payload: fused as any,
+      }
+    }).catch(err => {
+      throw new AppError(`Failed to save timeline data for meeting ${this.meetingId} at offset ${fused.offsetMs}: ${err.message}`, 500);
+    });
+
     this.onFused(fused);
   }
 
