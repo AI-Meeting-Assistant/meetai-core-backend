@@ -108,9 +108,15 @@ export class MeetingController {
       const { id } = req.params;
       if (!id) throw new AppError('Meeting ID is required', 400);
 
-      const { title, agenda } = req.body;
+      const userId = req.user?.id;
+      if (!userId) throw new AppError('User context required', 403);
 
-      const updatedMeeting = await meetingService.updateMeetingFields(id, orgId, { title, agenda });
+      const { title, agenda } = req.body as { title?: string; agenda?: string | null };
+
+      const updatedMeeting = await meetingService.updateMeetingFields(id, orgId, userId, {
+        ...(title !== undefined ? { title } : {}),
+        ...(agenda !== undefined ? { agenda } : {}),
+      });
 
       log.info('Meeting fields updated', { meetingId: id });
       res.status(200).json({

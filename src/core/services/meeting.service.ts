@@ -86,7 +86,12 @@ export class MeetingService {
     };
   }
 
-  async updateMeetingFields(meetingId: string, orgId: string, fields: { title?: string; agenda?: string }): Promise<Meeting> {
+  async updateMeetingFields(
+    meetingId: string,
+    orgId: string,
+    userId: string,
+    fields: { title?: string; agenda?: string | null },
+  ): Promise<Meeting> {
     const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
     if (!meeting) {
       throw new AppError('Meeting not found', 404);
@@ -96,11 +101,30 @@ export class MeetingService {
       throw new AppError('Forbidden: Meeting does not belong to your organization', 403);
     }
 
-    if (!fields.title && !fields.agenda) {
+    if (meeting.userId !== userId) {
+      throw new AppError('Forbidden: Only the meeting moderator can update this meeting', 403);
+    }
+
+    const hasTitle = fields.title !== undefined;
+    const hasAgenda = fields.agenda !== undefined;
+    if (!hasTitle && !hasAgenda) {
       throw new AppError('At least one field (title or agenda) must be provided', 400);
     }
 
-    return this.meetingRepository.updateFields(meetingId, fields);
+    const patch: { title?: string; agenda?: string | null } = {};
+    if (hasTitle) {
+      const trimmed = (fields.title ?? '').trim();
+      if (!trimmed) {
+        throw new AppError('Title cannot be empty', 400);
+      }
+      patch.title = trimmed;
+    }
+    if (hasAgenda) {
+      const trimmed = (fields.agenda ?? '').trim();
+      patch.agenda = trimmed.length > 0 ? trimmed : null;
+    }
+
+    return this.meetingRepository.updateFields(meetingId, patch);
   }
 
   async startMeeting(meetingId: string, orgId: string, userId: string): Promise<TicketIssueResult> {

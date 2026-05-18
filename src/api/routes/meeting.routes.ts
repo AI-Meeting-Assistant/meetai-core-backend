@@ -229,7 +229,7 @@ meetingRouter.get('/:id', meetingController.getMeetingById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-meetingRouter.patch('/:id', meetingController.updateMeeting);
+meetingRouter.patch('/:id', requireRole([Role.MODERATOR]), meetingController.updateMeeting);
 
 /**
  * @openapi
