@@ -7,6 +7,8 @@ export enum SseEventType {
   SPEAKING_RATE_RECOVERED = 'SPEAKING_RATE_RECOVERED',
   AGENDA_DEVIATION        = 'AGENDA_DEVIATION',
   AGENDA_FIT              = 'AGENDA_FIT',
+  MEETING_COMPLETED       = 'MEETING_COMPLETED',
+  MEETING_FAILED          = 'MEETING_FAILED',
 }
 
 export interface FusedChunk {
@@ -40,4 +42,43 @@ export interface ContextResult {
   onTopic: boolean | null
   reason: string | null
   chunksAnalysed: number
+}
+
+export interface RecordedTranscriptLine {
+  speaker: string
+  startMs: number
+  endMs: number
+  text: string
+}
+
+export interface RecordedSpeaker {
+  label: string
+  talkMs: number
+  ratioPercent: number
+}
+
+export interface RecordedMeetingPayload {
+  meetingId: string
+  offsetMs: number
+  aiSummary?: string | null
+  audio: {
+    vadSpeechMs: number | null
+    vadSilenceMs: number | null
+    vadSpeechRatioPercent: number | null
+    transcript: string | null
+    speakerLabelsWindow: unknown[] | null
+    speakerTalkMs?: Record<string, number> | null
+    speakerTalkRatioPercent?: Record<string, number> | null
+  }
+  video: null
+  recorded: {
+    durationMs: number
+    transcriptLines: RecordedTranscriptLine[]
+    speakers: RecordedSpeaker[]
+    adherence: {
+      score: number | null
+      onTopic: boolean | null
+      reason: string | null
+    }
+  }
 }

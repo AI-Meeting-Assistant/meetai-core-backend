@@ -9,7 +9,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
-
 }
 
 // --- ENUMS ---
@@ -22,6 +21,11 @@ enum MeetingStatus {
   SCHEDULED
   IN_PROGRESS
   COMPLETED
+}
+
+enum MeetingType {
+  LIVE
+  RECORDED
 }
 
 enum Severity {
@@ -72,6 +76,7 @@ model Meeting {
   title                String
   agenda               String?       @db.Text // Toplantı öncesi girileceği için isteğe bağlı (optional) olabilir
   timelineResolutionMs Int           @default(2000) @map("timeline_resolution_ms") // Örn: 2000
+  meetingType          MeetingType   @default(LIVE) @map("meeting_type")
   status               MeetingStatus @default(SCHEDULED)
   aiSummary            String?       @db.Text @map("ai_summary")
   

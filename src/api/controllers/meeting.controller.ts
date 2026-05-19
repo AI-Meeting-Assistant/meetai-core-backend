@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { MeetingType } from '@prisma/client';
 import { MeetingService } from '../../core/services/meeting.service';
 import { AppError } from '../../utils/errors/AppError';
 import { Logger } from '../../utils/logger';
@@ -47,10 +48,18 @@ export class MeetingController {
 
       if (!orgId || !userId) throw new AppError('User context required', 403);
 
-      const { title, agenda } = req.body;
+      const { title, agenda, meetingType: meetingTypeRaw } = req.body;
       let { timelineResolutionMs } = req.body;
       if (!title) throw new AppError('Title is required', 400);
-      timelineResolutionMs = Number.isFinite(timelineResolutionMs) ? timelineResolutionMs : 2000;
+
+      const meetingType =
+        meetingTypeRaw === 'RECORDED' ? MeetingType.RECORDED : MeetingType.LIVE;
+
+      if (meetingType === MeetingType.RECORDED) {
+        timelineResolutionMs = 0;
+      } else {
+        timelineResolutionMs = Number.isFinite(timelineResolutionMs) ? timelineResolutionMs : 2000;
+      }
 
       const result = await meetingService.createMeeting({
         organizationId: orgId,
@@ -58,12 +67,23 @@ export class MeetingController {
         title,
         agenda,
         timelineResolutionMs,
+        meetingType,
       });
 
-      log.info('Meeting created', { meetingId: result.id, orgId, userId, title });
+      log.info('Meeting created', {
+        meetingId: result.meeting.id,
+        orgId,
+        userId,
+        title,
+        meetingType,
+      });
       res.status(201).json({
         success: true,
-        data: result,
+        data: {
+          ...result.meeting,
+          streamTicket: result.streamTicket,
+          ticketExpiresAt: result.ticketExpiresAt,
+        },
         message: 'Meeting created successfully'
       });
     } catch (error) {

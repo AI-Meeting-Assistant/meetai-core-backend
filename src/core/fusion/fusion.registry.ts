@@ -1,10 +1,16 @@
+import { MeetingStatus } from '@prisma/client';
 import { subscriber } from '../../infrastructure/redis/pubsub';
+import prisma from '../../infrastructure/database/prisma.client';
+import { sseManager } from '../../infrastructure/websocket/sse.manager';
+import { SseEventType, RecordedMeetingPayload } from '../../types/sse-events';
+import { StreamTicketService } from '../services/ticket.service';
 import { FusionEngine } from './fusion.engine';
 import { ruleEngine } from '../rule-engine/rule.engine';
 
 class FusionEngineRegistry {
   private static instance: FusionEngineRegistry;
   private engines: Map<string, FusionEngine> = new Map();
+  private streamTicketService = new StreamTicketService();
 
   static getInstance(): FusionEngineRegistry {
     if (!FusionEngineRegistry.instance) {
@@ -15,7 +21,13 @@ class FusionEngineRegistry {
 
   initialize(): void {
     subscriber.connect();
-    subscriber.psubscribe('meeting:*:audio', 'meeting:*:vision', 'meeting:*:text');
+    subscriber.psubscribe(
+      'meeting:*:audio',
+      'meeting:*:vision',
+      'meeting:*:text',
+      'meeting:*:recorded-complete',
+      'meeting:*:recorded-error',
+    );
     subscriber.on('pmessage', this.onMessage.bind(this));
     console.log('[fusion-registry] Subscribed to meeting Redis channels');
   }
@@ -38,6 +50,55 @@ class FusionEngineRegistry {
     console.log(`[fusion-registry] Engine stopped for meeting ${meetingId}`);
   }
 
+  private async onRecordedComplete(meetingId: string, data: Record<string, unknown>): Promise<void> {
+    const payload = data as unknown as RecordedMeetingPayload;
+    const aiSummary =
+      (data['aiSummary'] as string | null | undefined) ??
+      (data['ai_summary'] as string | null | undefined) ??
+      null;
+
+    await prisma.timelineData.create({
+      data: {
+        meetingId,
+        offsetMs: 0,
+        payload: payload as object,
+      },
+    });
+
+    await prisma.meeting.update({
+      where: { id: meetingId },
+      data: {
+        status: MeetingStatus.COMPLETED,
+        endedAt: new Date(),
+        aiSummary,
+      },
+    });
+
+    await this.streamTicketService.clearTicket(meetingId);
+    sseManager.publish(meetingId, SseEventType.MEETING_COMPLETED, { meetingId });
+    console.log(`[fusion-registry] Recorded meeting ${meetingId} completed`);
+  }
+
+  private async onRecordedError(meetingId: string, data: Record<string, unknown>): Promise<void> {
+    const reason =
+      (data['reason'] as string | undefined) ??
+      (data['message'] as string | undefined) ??
+      'Unknown processing error';
+
+    await prisma.meeting.update({
+      where: { id: meetingId },
+      data: {
+        status: MeetingStatus.COMPLETED,
+        endedAt: new Date(),
+        aiSummary: `Processing failed: ${reason}`,
+      },
+    });
+
+    await this.streamTicketService.clearTicket(meetingId);
+    sseManager.publish(meetingId, SseEventType.MEETING_FAILED, { meetingId, reason });
+    console.error(`[fusion-registry] Recorded meeting ${meetingId} failed: ${reason}`);
+  }
+
   private onMessage(_pattern: string, channel: string, message: string): void {
     const parts = channel.split(':');
     const meetingId = parts[1];
@@ -47,6 +108,20 @@ class FusionEngineRegistry {
 
     try {
       const data = JSON.parse(message) as Record<string, unknown>;
+
+      if (channel.endsWith(':recorded-complete')) {
+        void this.onRecordedComplete(meetingId, data).catch((err) => {
+          console.error(`[fusion-registry] Failed to persist recorded-complete for ${meetingId}`, err);
+        });
+        return;
+      }
+
+      if (channel.endsWith(':recorded-error')) {
+        void this.onRecordedError(meetingId, data).catch((err) => {
+          console.error(`[fusion-registry] Failed to handle recorded-error for ${meetingId}`, err);
+        });
+        return;
+      }
 
       if (channel.endsWith(':audio')) {
         if (!engine) return;

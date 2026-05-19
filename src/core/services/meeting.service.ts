@@ -4,10 +4,16 @@ import { UserRepository } from '../../infrastructure/database/repositories/user.
 import { TimelineRepository } from '../../infrastructure/database/repositories/timeline.repository';
 import { AlertRepository } from '../../infrastructure/database/repositories/alert.repository';
 import { AppError } from '../../utils/errors/AppError';
-import { Prisma, MeetingStatus, Meeting } from '@prisma/client';
+import { Prisma, MeetingStatus, Meeting, MeetingType } from '@prisma/client';
 import { StreamTicketService, TicketIssueResult } from './ticket.service';
 import { fusionEngineRegistry } from '../fusion/fusion.registry';
 import { sseManager } from '../../infrastructure/websocket/sse.manager';
+
+export interface CreateMeetingResult {
+  meeting: Meeting;
+  streamTicket?: string;
+  ticketExpiresAt?: string;
+}
 
 export class MeetingService {
   private meetingRepository: MeetingRepository;
@@ -29,7 +35,6 @@ export class MeetingService {
   async listMeetings(organizationId?: string, queryParams?: any) {
     let meetings = await this.meetingRepository.findAll();
 
-    // Basic filtering based on organizationId if provided
     if (organizationId) {
       meetings = meetings.filter(m => m.organizationId === organizationId);
     }
@@ -37,7 +42,7 @@ export class MeetingService {
     return meetings;
   }
 
-  async createMeeting(data: Prisma.MeetingUncheckedCreateInput): Promise<Meeting> {
+  async createMeeting(data: Prisma.MeetingUncheckedCreateInput): Promise<CreateMeetingResult> {
     if (!data.organizationId || !data.userId) {
       throw new AppError('Organization ID and User ID are required', 400);
     }
@@ -56,14 +61,29 @@ export class MeetingService {
       throw new AppError('User does not belong to the specified organization', 403);
     }
 
+    const meetingType = data.meetingType ?? MeetingType.LIVE;
+    const isRecorded = meetingType === MeetingType.RECORDED;
+
     const createData: Prisma.MeetingUncheckedCreateInput = {
       ...data,
-      status: data.status ?? MeetingStatus.SCHEDULED,
+      meetingType,
+      status: isRecorded ? MeetingStatus.IN_PROGRESS : (data.status ?? MeetingStatus.SCHEDULED),
+      startedAt: isRecorded ? new Date() : data.startedAt,
+      timelineResolutionMs: isRecorded ? 0 : (data.timelineResolutionMs ?? 2000),
     };
 
     const meeting = await this.meetingRepository.create(createData);
 
-    return meeting;
+    if (!isRecorded) {
+      return { meeting };
+    }
+
+    const ticket = await this.streamTicketService.issueTicket(meeting.id);
+    return {
+      meeting,
+      streamTicket: ticket.streamTicket,
+      ticketExpiresAt: ticket.ticketExpiresAt,
+    };
   }
 
   async getFullMeetingAnalysis(meetingId: string) {
@@ -141,6 +161,10 @@ export class MeetingService {
       throw new AppError('Forbidden: Only the meeting moderator can start this meeting', 403);
     }
 
+    if (meeting.meetingType === MeetingType.RECORDED) {
+      throw new AppError('Recorded meetings cannot be started manually', 409);
+    }
+
     if (meeting.status !== 'SCHEDULED') {
       throw new AppError(`Meeting cannot be started from status: ${meeting.status}`, 409);
     }
@@ -152,7 +176,7 @@ export class MeetingService {
     return this.streamTicketService.issueTicket(meetingId);
   }
 
-    async endMeeting(meetingId: string, orgId: string, userId: string): Promise<Meeting> {
+  async endMeeting(meetingId: string, orgId: string, userId: string): Promise<Meeting> {
     const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
     if (!meeting) {
       throw new AppError('Meeting not found', 404);
@@ -194,7 +218,16 @@ export class MeetingService {
     }
 
     if (meeting.status === 'IN_PROGRESS') {
-      throw new AppError('Meeting cannot be deleted while in progress. End the meeting first.', 409);
+      const isRecordedProcessing =
+        meeting.meetingType === MeetingType.RECORDED;
+      if (isRecordedProcessing) {
+        const timeline = await this.timelineRepository.findAllByMeetingId(meetingId);
+        if (timeline.length > 0) {
+          throw new AppError('Meeting cannot be deleted while processing has produced results', 409);
+        }
+      } else {
+        throw new AppError('Meeting cannot be deleted while in progress. End the meeting first.', 409);
+      }
     }
 
     await this.streamTicketService.clearTicket(meetingId);
@@ -208,7 +241,6 @@ export class MeetingService {
 
     const analysis = await this.getFullMeetingAnalysis(meetingId);
 
-    // Mock export behavior
     const mockReportData = `
       Meeting Report
       --------------
