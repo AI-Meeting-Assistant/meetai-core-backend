@@ -22,14 +22,15 @@ export class MeetingController {
 
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const status = req.query.status as string;
+      const status = req.query.status as string | undefined;
+      const meetingType = req.query.meetingType as string | undefined;
 
-      const meetings = await meetingService.listMeetings(orgId, { page, limit, status });
+      const result = await meetingService.listMeetings(orgId, { page, limit, status, meetingType });
 
-      log.info('Meetings fetched', { orgId, count: meetings.length });
+      log.info('Meetings fetched', { orgId, count: result.items.length, total: result.total });
       res.status(200).json({
         success: true,
-        data: meetings,
+        data: result,
         message: 'Meetings fetched successfully'
       });
     } catch (error) {

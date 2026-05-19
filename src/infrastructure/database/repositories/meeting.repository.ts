@@ -1,12 +1,28 @@
 import prisma from '../prisma.client';
-import { Prisma, MeetingStatus, Meeting, User, Organization } from '@prisma/client';
+import { Prisma, MeetingStatus, MeetingType, Meeting, User, Organization } from '@prisma/client';
 
 export class MeetingRepository {
-  /**
-   * Returns all meetings.
-   */
-  async findAll(tx?: Prisma.TransactionClient): Promise<Meeting[]> {
-    return (tx ?? prisma).meeting.findMany();
+  async findPaginated(
+    organizationId: string,
+    opts: { page: number; limit: number; status?: string; meetingType?: string },
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ items: Meeting[]; total: number }> {
+    const client = tx ?? prisma;
+    const where: Prisma.MeetingWhereInput = {
+      organizationId,
+      ...(opts.status ? { status: opts.status as MeetingStatus } : {}),
+      ...(opts.meetingType ? { meetingType: opts.meetingType as MeetingType } : {}),
+    };
+    const [items, total] = await Promise.all([
+      client.meeting.findMany({
+        where,
+        skip: (opts.page - 1) * opts.limit,
+        take: opts.limit,
+        orderBy: { startedAt: 'desc' },
+      }),
+      client.meeting.count({ where }),
+    ]);
+    return { items, total };
   }
 
   /**

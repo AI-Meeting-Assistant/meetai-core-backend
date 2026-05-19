@@ -32,14 +32,18 @@ export class MeetingService {
     this.streamTicketService = new StreamTicketService();
   }
 
-  async listMeetings(organizationId?: string, queryParams?: any) {
-    let meetings = await this.meetingRepository.findAll();
-
-    if (organizationId) {
-      meetings = meetings.filter(m => m.organizationId === organizationId);
-    }
-
-    return meetings;
+  async listMeetings(
+    organizationId: string,
+    opts: { page: number; limit: number; status?: string; meetingType?: string },
+  ): Promise<{ items: Meeting[]; total: number; page: number; limit: number; totalPages: number }> {
+    const { items, total } = await this.meetingRepository.findPaginated(organizationId, opts);
+    return {
+      items,
+      total,
+      page: opts.page,
+      limit: opts.limit,
+      totalPages: Math.ceil(total / opts.limit),
+    };
   }
 
   async createMeeting(data: Prisma.MeetingUncheckedCreateInput): Promise<CreateMeetingResult> {
