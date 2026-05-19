@@ -75,7 +75,6 @@ class FusionEngineRegistry {
           meetingId: data['meetingId'] as string,
           offsetMs: data['offsetMs'] as number,
           contextFit: (data['contextFit'] as number | null) ?? null,
-          adherenceScore: (data['adherenceScore'] as number | null) ?? null,
           onTopic: (data['onTopic'] as boolean | null) ?? null,
           reason: (data['reason'] as string | null) ?? null,
           chunksAnalysed: data['chunksAnalysed'] as number,

@@ -97,7 +97,6 @@ export class FusionEngine {
     timelineRepository.upsertPayloadSlice(this.meetingId, data.offsetMs, {
       context: {
         contextFit: data.contextFit,
-        adherenceScore: data.adherenceScore,
         onTopic: data.onTopic,
         reason: data.reason,
         chunksAnalysed: data.chunksAnalysed,

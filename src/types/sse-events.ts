@@ -37,7 +37,6 @@ export interface ContextResult {
   meetingId: string
   offsetMs: number
   contextFit: number | null
-  adherenceScore: number | null
   onTopic: boolean | null
   reason: string | null
   chunksAnalysed: number
