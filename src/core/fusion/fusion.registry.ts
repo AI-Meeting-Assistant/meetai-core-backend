@@ -1,13 +1,14 @@
 import { subscriber } from '../../infrastructure/redis/pubsub';
 import { FusionEngine } from './fusion.engine';
 import { ruleEngine } from '../rule-engine/rule.engine';
-import { MeetingService } from '../services/meeting.service';
 
-const meetingService = new MeetingService();
+type RecordedHandler = (meetingId: string, data: Record<string, unknown>) => Promise<void>;
 
 class FusionEngineRegistry {
   private static instance: FusionEngineRegistry;
   private engines: Map<string, FusionEngine> = new Map();
+  private onRecordedComplete: RecordedHandler = async () => {};
+  private onRecordedError: RecordedHandler = async () => {};
 
   static getInstance(): FusionEngineRegistry {
     if (!FusionEngineRegistry.instance) {
@@ -16,7 +17,9 @@ class FusionEngineRegistry {
     return FusionEngineRegistry.instance;
   }
 
-  initialize(): void {
+  initialize(handlers: { onRecordedComplete: RecordedHandler; onRecordedError: RecordedHandler }): void {
+    this.onRecordedComplete = handlers.onRecordedComplete;
+    this.onRecordedError = handlers.onRecordedError;
     subscriber.connect();
     subscriber.psubscribe(
       'meeting:*:audio',
@@ -63,14 +66,14 @@ class FusionEngineRegistry {
     const engine = this.engines.get(meetingId);
 
     if (channel.endsWith(':recorded-complete')) {
-      meetingService.completeRecordedMeeting(meetingId, data).catch((err) => {
+      this.onRecordedComplete(meetingId, data).catch((err) => {
         console.error(`[fusion-registry] completeRecordedMeeting failed for ${meetingId}`, err);
       });
       return;
     }
 
     if (channel.endsWith(':recorded-error')) {
-      meetingService.failRecordedMeeting(meetingId, data).catch((err) => {
+      this.onRecordedError(meetingId, data).catch((err) => {
         console.error(`[fusion-registry] failRecordedMeeting failed for ${meetingId}`, err);
       });
       return;

@@ -2,12 +2,17 @@ import 'dotenv/config';
 import http from 'http';
 import app from './app';
 import { fusionEngineRegistry } from './core/fusion/fusion.registry';
+import { MeetingService } from './core/services/meeting.service';
 
 const PORT = process.env.PORT ?? 3000;
 
 const server = http.createServer(app);
 
-fusionEngineRegistry.initialize();
+const meetingService = new MeetingService();
+fusionEngineRegistry.initialize({
+  onRecordedComplete: (meetingId, data) => meetingService.completeRecordedMeeting(meetingId, data),
+  onRecordedError:    (meetingId, data) => meetingService.failRecordedMeeting(meetingId, data),
+});
 
 server.listen(PORT, () => {
   console.log(`[server] Running on http://localhost:${PORT}`);
