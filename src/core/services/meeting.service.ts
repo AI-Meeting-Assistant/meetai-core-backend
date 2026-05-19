@@ -8,6 +8,7 @@ import { Prisma, MeetingStatus, Meeting, MeetingType } from '@prisma/client';
 import { StreamTicketService, TicketIssueResult } from './ticket.service';
 import { fusionEngineRegistry } from '../fusion/fusion.registry';
 import { sseManager } from '../../infrastructure/websocket/sse.manager';
+import { SseEventType } from '../../types/sse-events';
 
 export interface CreateMeetingResult {
   meeting: Meeting;
@@ -236,6 +237,28 @@ export class MeetingService {
 
     await this.streamTicketService.clearTicket(meetingId);
     await this.meetingRepository.delete(meetingId);
+  }
+
+  async completeRecordedMeeting(meetingId: string, payload: Record<string, unknown>): Promise<void> {
+    const aiSummary = (payload['aiSummary'] as string | null | undefined) ?? null;
+
+    await this.timelineRepository.upsertPayloadSlice(meetingId, 0, payload);
+
+    await this.meetingRepository.updateStatus(meetingId, MeetingStatus.COMPLETED, { endedAt: new Date() });
+    await this.meetingRepository.updateAiSummary(meetingId, aiSummary ?? '');
+
+    await this.streamTicketService.clearTicket(meetingId);
+    sseManager.publish(meetingId, SseEventType.MEETING_COMPLETED, { meetingId });
+  }
+
+  async failRecordedMeeting(meetingId: string, payload: Record<string, unknown>): Promise<void> {
+    const reason = (payload['reason'] as string | undefined) ?? 'Unknown processing error';
+
+    await this.meetingRepository.updateStatus(meetingId, MeetingStatus.COMPLETED, { endedAt: new Date() });
+    await this.meetingRepository.updateAiSummary(meetingId, `Processing failed: ${reason}`);
+
+    await this.streamTicketService.clearTicket(meetingId);
+    sseManager.publish(meetingId, SseEventType.MEETING_FAILED, { meetingId, reason });
   }
 
   async exportMeetingReport(meetingId: string, format: string) {
