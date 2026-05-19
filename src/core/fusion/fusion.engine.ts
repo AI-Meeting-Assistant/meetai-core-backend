@@ -8,6 +8,9 @@ interface AudioChunk {
   meetingId: string
   offsetMs: number
   transcript: string | null
+  transcriptLines: Array<{ speaker: string; text: string }> | null
+  speakerTalkMs: Record<string, number> | null
+  speakerTalkRatioPercent: Record<string, number> | null
   vadSpeechMs: number | null
   vadSilenceMs: number | null
   vadSpeechRatioPercent: number | null
@@ -67,6 +70,9 @@ export class FusionEngine {
         vadSilenceMs: audio.vadSilenceMs,
         vadSpeechRatioPercent: audio.vadSpeechRatioPercent,
         transcript: audio.transcript,
+        transcriptLines: audio.transcriptLines,
+        speakerTalkMs: audio.speakerTalkMs,
+        speakerTalkRatioPercent: audio.speakerTalkRatioPercent,
         speakerLabelsWindow: audio.speakerLabelsWindow,
       },
       video: {
@@ -91,6 +97,7 @@ export class FusionEngine {
     timelineRepository.upsertPayloadSlice(this.meetingId, data.offsetMs, {
       context: {
         contextFit: data.contextFit,
+        adherenceScore: data.adherenceScore,
         onTopic: data.onTopic,
         reason: data.reason,
         chunksAnalysed: data.chunksAnalysed,

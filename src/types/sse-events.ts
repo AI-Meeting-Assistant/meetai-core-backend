@@ -17,6 +17,9 @@ export interface FusedChunk {
     vadSilenceMs: number | null
     vadSpeechRatioPercent: number | null
     transcript: string | null
+    transcriptLines: Array<{ speaker: string; text: string }> | null
+    speakerTalkMs: Record<string, number> | null
+    speakerTalkRatioPercent: Record<string, number> | null
     speakerLabelsWindow: unknown[] | null
   }
   video: {
@@ -34,6 +37,7 @@ export interface ContextResult {
   meetingId: string
   offsetMs: number
   contextFit: number | null
+  adherenceScore: number | null
   onTopic: boolean | null
   reason: string | null
   chunksAnalysed: number
