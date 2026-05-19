@@ -34,4 +34,23 @@ export class TimelineRepository {
       orderBy: { offsetMs: 'asc' },
     });
   }
+
+  /**
+   * Merges a partial payload slice into the TimelineData row at (meetingId, offsetMs).
+   * Creates the row if it does not exist yet. Used for out-of-order audio/video/context arrival.
+   */
+  async upsertPayloadSlice(
+    meetingId: string,
+    offsetMs: number,
+    slice: Record<string, unknown>,
+    tx?: Prisma.TransactionClient,
+  ): Promise<TimelineData> {
+    const client = tx ?? prisma;
+    const existing = await client.timelineData.findFirst({ where: { meetingId, offsetMs } });
+    const merged = { ...(existing?.payload as Record<string, unknown> ?? {}), ...slice } as Prisma.InputJsonValue;
+    if (existing) {
+      return client.timelineData.update({ where: { id: existing.id }, data: { payload: merged } });
+    }
+    return client.timelineData.create({ data: { meetingId, offsetMs, payload: merged } });
+  }
 }

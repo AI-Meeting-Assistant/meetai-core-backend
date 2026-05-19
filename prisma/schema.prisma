@@ -90,6 +90,7 @@ model TimelineData {
   offsetMs   Int      @map("offset_ms")
   payload    Json     // Focus, Emotion, Diarization JSON formatında
   
+  @@unique([meetingId, offsetMs])
   @@index([meetingId, offsetMs])
   @@map("TIMELINE_DATA")
 }

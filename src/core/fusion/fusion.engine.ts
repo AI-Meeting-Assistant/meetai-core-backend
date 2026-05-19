@@ -1,6 +1,8 @@
-import { FusedChunk } from '../../types/sse-events';
-import { prisma } from '../../infrastructure/database/prisma.client';
+import { FusedChunk, ContextResult } from '../../types/sse-events';
 import { AppError } from '../../utils/errors/AppError';
+import { TimelineRepository } from '../../infrastructure/database/repositories/timeline.repository';
+
+const timelineRepository = new TimelineRepository();
 
 interface AudioChunk {
   meetingId: string
@@ -75,17 +77,27 @@ export class FusionEngine {
 
     this.buffer.delete(bucket);
 
-    prisma.timelineData.create({
-      data: {
-        meetingId: this.meetingId,
-        offsetMs: fused.offsetMs,
-        payload: fused as any,
-      }
+    timelineRepository.upsertPayloadSlice(this.meetingId, fused.offsetMs, {
+      audio: fused.audio,
+      video: fused.video,
     }).catch(err => {
-      throw new AppError(`Failed to save timeline data for meeting ${this.meetingId} at offset ${fused.offsetMs}: ${err.message}`, 500);
+      throw new AppError(`Failed to upsert timeline data for meeting ${this.meetingId} at offset ${fused.offsetMs}: ${err.message}`, 500);
     });
 
     this.onFused(fused);
+  }
+
+  onContext(data: ContextResult): void {
+    timelineRepository.upsertPayloadSlice(this.meetingId, data.offsetMs, {
+      context: {
+        contextFit: data.contextFit,
+        onTopic: data.onTopic,
+        reason: data.reason,
+        chunksAnalysed: data.chunksAnalysed,
+      },
+    }).catch(err => {
+      throw new AppError(`Failed to upsert context for meeting ${this.meetingId} at offset ${data.offsetMs}: ${err.message}`, 500);
+    });
   }
 
   destroy(): void {

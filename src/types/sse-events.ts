@@ -6,6 +6,7 @@ export enum SseEventType {
   SPEAKING_RATE_DROP      = 'SPEAKING_RATE_DROP',
   SPEAKING_RATE_RECOVERED = 'SPEAKING_RATE_RECOVERED',
   AGENDA_DEVIATION        = 'AGENDA_DEVIATION',
+  AGENDA_FIT              = 'AGENDA_FIT',
 }
 
 export interface FusedChunk {
@@ -32,5 +33,8 @@ export interface FusedChunk {
 export interface ContextResult {
   meetingId: string
   offsetMs: number
-  contextFit: number
+  contextFit: number | null
+  onTopic: boolean | null
+  reason: string | null
+  chunksAnalysed: number
 }

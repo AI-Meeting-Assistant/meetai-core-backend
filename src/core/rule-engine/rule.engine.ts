@@ -36,10 +36,12 @@ class RuleEngine {
   }
 
   evaluateContextResult(meetingId: string, result: ContextResult): void {
-    if (result.contextFit < AGENDA_DEVIATION_THRESHOLD) {
-      log.info('AGENDA_DEVIATION triggered', { meetingId, contextFit: result.contextFit, offsetMs: result.offsetMs });
+    if (result.onTopic === false) {
+      log.info('AGENDA_DEVIATION triggered', { meetingId, contextFit: result.contextFit, onTopic: result.onTopic, offsetMs: result.offsetMs });
       sseManager.publish(meetingId, SseEventType.AGENDA_DEVIATION, {
         contextFit: result.contextFit,
+        onTopic: result.onTopic,
+        reason: result.reason,
         offsetMs: result.offsetMs,
       });
       // await alertRepository.createAlert({
@@ -48,7 +50,15 @@ class RuleEngine {
       //   severity: 'MEDIUM',
       //   message: `Meeting is deviating from the agenda (context fit: ${(result.contextFit * 100).toFixed(0)}%)`,
       // });
+    } else if (result.onTopic === true) {
+      log.info('AGENDA_FIT triggered', { meetingId, contextFit: result.contextFit, offsetMs: result.offsetMs });
+      sseManager.publish(meetingId, SseEventType.AGENDA_FIT, {
+        contextFit: result.contextFit,
+        onTopic: result.onTopic,
+        offsetMs: result.offsetMs,
+      });
     }
+    // onTopic === null means LLM returned an error — emit nothing
   }
 
   cleanup(meetingId: string): void {

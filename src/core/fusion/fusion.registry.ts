@@ -68,11 +68,16 @@ class FusionEngineRegistry {
           persons: (data['persons'] as Array<{ personId: number; focusScore: number; speakingRatio: number; frameCount: number }>) ?? [],
         });
       } else if (channel.endsWith(':text')) {
-        ruleEngine.evaluateContextResult(meetingId, {
+        const contextResult = {
           meetingId: data['meetingId'] as string,
           offsetMs: data['offsetMs'] as number,
-          contextFit: data['contextFit'] as number,
-        });
+          contextFit: (data['contextFit'] as number | null) ?? null,
+          onTopic: (data['onTopic'] as boolean | null) ?? null,
+          reason: (data['reason'] as string | null) ?? null,
+          chunksAnalysed: data['chunksAnalysed'] as number,
+        };
+        ruleEngine.evaluateContextResult(meetingId, contextResult);
+        if (engine) engine.onContext(contextResult);
       }
     } catch (err) {
       console.error(`[fusion-registry] Failed to parse message on channel ${channel}`, err);
