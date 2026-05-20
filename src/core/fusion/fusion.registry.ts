@@ -3,12 +3,14 @@ import { FusionEngine } from './fusion.engine';
 import { ruleEngine } from '../rule-engine/rule.engine';
 
 type RecordedHandler = (meetingId: string, data: Record<string, unknown>) => Promise<void>;
+type SummaryHandler = (meetingId: string, summary: string) => Promise<void>;
 
 class FusionEngineRegistry {
   private static instance: FusionEngineRegistry;
   private engines: Map<string, FusionEngine> = new Map();
   private onRecordedComplete: RecordedHandler = async () => {};
   private onRecordedError: RecordedHandler = async () => {};
+  private onSummaryComplete: SummaryHandler = async () => {};
 
   static getInstance(): FusionEngineRegistry {
     if (!FusionEngineRegistry.instance) {
@@ -17,9 +19,10 @@ class FusionEngineRegistry {
     return FusionEngineRegistry.instance;
   }
 
-  initialize(handlers: { onRecordedComplete: RecordedHandler; onRecordedError: RecordedHandler }): void {
+  initialize(handlers: { onRecordedComplete: RecordedHandler; onRecordedError: RecordedHandler; onSummaryComplete: SummaryHandler }): void {
     this.onRecordedComplete = handlers.onRecordedComplete;
     this.onRecordedError = handlers.onRecordedError;
+    this.onSummaryComplete = handlers.onSummaryComplete;
     subscriber.connect();
     subscriber.psubscribe(
       'meeting:*:audio',
@@ -27,6 +30,7 @@ class FusionEngineRegistry {
       'meeting:*:text',
       'meeting:*:recorded-complete',
       'meeting:*:recorded-error',
+      'meeting:*:summary',
     );
     subscriber.on('pmessage', this.onMessage.bind(this));
     console.log('[fusion-registry] Subscribed to meeting Redis channels');
@@ -64,6 +68,14 @@ class FusionEngineRegistry {
     }
 
     const engine = this.engines.get(meetingId);
+
+    if (channel.endsWith(':summary')) {
+      const summary = (data['summary'] as string | null) ?? '';
+      this.onSummaryComplete(meetingId, summary).catch((err) => {
+        console.error(`[fusion-registry] onSummaryComplete failed for ${meetingId}`, err);
+      });
+      return;
+    }
 
     if (channel.endsWith(':recorded-complete')) {
       this.onRecordedComplete(meetingId, data).catch((err) => {

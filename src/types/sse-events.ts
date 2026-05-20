@@ -9,6 +9,7 @@ export enum SseEventType {
   AGENDA_FIT              = 'AGENDA_FIT',
   MEETING_COMPLETED       = 'MEETING_COMPLETED',
   MEETING_FAILED          = 'MEETING_FAILED',
+  SUMMARY_READY           = 'SUMMARY_READY',
 }
 
 export interface FusedChunk {

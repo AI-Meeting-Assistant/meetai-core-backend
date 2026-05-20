@@ -188,12 +188,12 @@ export class MeetingController {
       const { id } = req.params;
       if (!id) throw new AppError('Meeting ID is required', 400);
 
-      const updatedMeeting = await meetingService.endMeeting(id, orgId, userId);
+      const { meeting, transcript } = await meetingService.endMeeting(id, orgId, userId);
 
-      log.info('Meeting ended', { meetingId: id, userId });
+      log.info('Meeting ended', { meetingId: id, userId, transcriptLength: transcript.length });
       res.status(200).json({
         success: true,
-        data: updatedMeeting,
+        data: { ...meeting, transcript },
         message: 'Meeting ended successfully',
       });
     } catch (error) {

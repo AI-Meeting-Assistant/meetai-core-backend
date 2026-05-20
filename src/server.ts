@@ -10,8 +10,9 @@ const server = http.createServer(app);
 
 const meetingService = new MeetingService();
 fusionEngineRegistry.initialize({
-  onRecordedComplete: (meetingId, data) => meetingService.completeRecordedMeeting(meetingId, data),
-  onRecordedError:    (meetingId, data) => meetingService.failRecordedMeeting(meetingId, data),
+  onRecordedComplete:  (meetingId, data) => meetingService.completeRecordedMeeting(meetingId, data),
+  onRecordedError:     (meetingId, data) => meetingService.failRecordedMeeting(meetingId, data),
+  onSummaryComplete:   (meetingId, summary) => meetingService.completeWithSummary(meetingId, summary),
 });
 
 server.listen(PORT, () => {

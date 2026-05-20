@@ -181,7 +181,7 @@ export class MeetingService {
     return this.streamTicketService.issueTicket(meetingId);
   }
 
-  async endMeeting(meetingId: string, orgId: string, userId: string): Promise<Meeting> {
+  async endMeeting(meetingId: string, orgId: string, userId: string): Promise<{ meeting: Meeting; transcript: string }> {
     const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
     if (!meeting) {
       throw new AppError('Meeting not found', 404);
@@ -200,12 +200,25 @@ export class MeetingService {
     }
 
     const updatedMeeting = await this.meetingRepository.updateStatus(meetingId, 'COMPLETED', { endedAt: new Date() });
-    await this.streamTicketService.clearTicket(meetingId);
 
     fusionEngineRegistry.stop(meetingId);
-    sseManager.unsubscribeAll(meetingId);
+    // SSE connection intentionally kept alive — SUMMARY_READY event will close it via completeWithSummary
 
-    return updatedMeeting;
+    const timeline = await this.timelineRepository.findAllByMeetingId(meetingId);
+    const transcript = timeline
+      .sort((a, b) => a.offsetMs - b.offsetMs)
+      .map(row => (row.payload as Record<string, unknown> & { audio?: { transcript?: string } })?.audio?.transcript)
+      .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+      .join(' ');
+
+    return { meeting: updatedMeeting, transcript };
+  }
+
+  async completeWithSummary(meetingId: string, summary: string): Promise<void> {
+    await this.meetingRepository.updateAiSummary(meetingId, summary);
+    await this.streamTicketService.clearTicket(meetingId);
+    sseManager.publish(meetingId, SseEventType.SUMMARY_READY, { meetingId, aiSummary: summary });
+    sseManager.unsubscribeAll(meetingId);
   }
 
   async deleteMeeting(meetingId: string, orgId: string, userId: string): Promise<void> {
