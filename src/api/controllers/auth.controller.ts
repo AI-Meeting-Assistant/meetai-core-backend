@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { Role } from '@prisma/client';
 import { AuthService } from '../../core/services/auth.service';
 import { AppError } from '../../utils/errors/AppError';
 import { Logger } from '../../utils/logger';
@@ -39,21 +38,13 @@ export class AuthController {
    */
   async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email, password, expectedRole } = req.body;
+      const { email, password } = req.body;
 
       if (!email || !password) {
         throw new AppError('email and password are required', 400);
       }
 
-      let roleFilter: Role | undefined;
-      if (expectedRole !== undefined && expectedRole !== null && expectedRole !== '') {
-        if (expectedRole !== Role.MODERATOR && expectedRole !== Role.VIEWER) {
-          throw new AppError('expectedRole must be MODERATOR or VIEWER', 400);
-        }
-        roleFilter = expectedRole as Role;
-      }
-
-      const result = await authService.login(email, password, roleFilter);
+      const result = await authService.login(email, password);
 
       log.info('User logged in', { email });
       res.status(200).json({

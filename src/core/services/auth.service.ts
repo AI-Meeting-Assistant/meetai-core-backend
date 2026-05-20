@@ -67,7 +67,7 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string, expectedRole?: Role): Promise<AuthResult> {
+  async login(email: string, password: string): Promise<AuthResult> {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       throw new AppError('Invalid credentials', 401);
@@ -79,15 +79,7 @@ export class AuthService {
     }
 
     if (!user.isActive) {
-      throw new AppError('This account has been deactivated. Contact your moderator.', 403);
-    }
-
-    if (expectedRole && user.role !== expectedRole) {
-      const message =
-        expectedRole === Role.MODERATOR
-          ? 'This account is for viewer login. Use the viewer sign-in page.'
-          : 'This account is for moderator login. Use the moderator sign-in page.';
-      throw new AppError(message, 403);
+      throw new AppError('This account has been deactivated. Contact your organization administrator.', 403);
     }
 
     const token = this.signToken({ id: user.id, organizationId: user.organizationId, role: user.role });

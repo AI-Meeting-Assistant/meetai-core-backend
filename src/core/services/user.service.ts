@@ -59,11 +59,12 @@ export class UserService {
     return users.map((u) => this.toSummary(u));
   }
 
-  async createViewerUser(
+  async createOrganizationUser(
     orgId: string,
     fullName: string,
     email: string,
     password: string,
+    role: Role,
   ): Promise<OrganizationUserSummary> {
     const trimmedName = fullName.trim();
     const trimmedEmail = email.trim().toLowerCase();
@@ -75,6 +76,9 @@ export class UserService {
     }
     if (!password || password.length < 6) {
       throw new AppError('password must be at least 6 characters', 400);
+    }
+    if (role !== Role.MODERATOR && role !== Role.VIEWER) {
+      throw new AppError('role must be MODERATOR or VIEWER', 400);
     }
 
     const existing = await this.userRepository.findByEmail(trimmedEmail);
@@ -88,7 +92,7 @@ export class UserService {
       fullName: trimmedName,
       email: trimmedEmail,
       passwordHash,
-      role: Role.VIEWER,
+      role,
     });
 
     return this.toSummary(user);

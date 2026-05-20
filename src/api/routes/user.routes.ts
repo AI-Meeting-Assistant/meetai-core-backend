@@ -11,5 +11,5 @@ userRouter.use(requireAuth);
 userRouter.use(requireRole([Role.MODERATOR]));
 
 userRouter.get('/', userController.listUsers);
-userRouter.post('/', userController.createViewer);
+userRouter.post('/', userController.createUser);
 userRouter.patch('/:id', userController.updateUser);

@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { Role } from '@prisma/client';
 import { UserService } from '../../core/services/user.service';
 import { AppError } from '../../utils/errors/AppError';
 import { Logger } from '../../utils/logger';
@@ -31,25 +32,34 @@ export class UserController {
 
   /**
    * POST /users
-   * Creates a new viewer account in the moderator's organization.
+   * Creates a new organization member (moderator or viewer).
    */
-  async createViewer(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const orgId = req.user?.organizationId;
       if (!orgId) throw new AppError('Organization context required', 403);
 
-      const { fullName, email, password } = req.body;
-      if (!fullName || !email || !password) {
-        throw new AppError('fullName, email, and password are required', 400);
+      const { fullName, email, password, role } = req.body;
+      if (!fullName || !email || !password || !role) {
+        throw new AppError('fullName, email, password, and role are required', 400);
+      }
+      if (role !== Role.MODERATOR && role !== Role.VIEWER) {
+        throw new AppError('role must be MODERATOR or VIEWER', 400);
       }
 
-      const user = await userService.createViewerUser(orgId, fullName, email, password);
+      const user = await userService.createOrganizationUser(
+        orgId,
+        fullName,
+        email,
+        password,
+        role as Role,
+      );
 
-      log.info('Viewer user created', { orgId, email: user.email });
+      log.info('Organization user created', { orgId, email: user.email, role: user.role });
       res.status(201).json({
         success: true,
         data: user,
-        message: 'Viewer created successfully',
+        message: 'Team member created successfully',
       });
     } catch (error) {
       next(error);
