@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { Role } from '@prisma/client';
 import prisma from '../../infrastructure/database/prisma.client';
 import { UserRepository } from '../../infrastructure/database/repositories/user.repository';
 import { OrganizationService } from './organization.service';
@@ -47,7 +48,7 @@ export class AuthService {
       const org = await this.organizationService.createOrganization(organizationName, tx);
 
       return this.userService.createUser(
-        { organizationId: org.id, fullName, email, passwordHash },
+        { organizationId: org.id, fullName, email, passwordHash, role: Role.MODERATOR },
         tx,
       );
     });
@@ -66,7 +67,7 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string): Promise<AuthResult> {
+  async login(email: string, password: string, expectedRole?: Role): Promise<AuthResult> {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       throw new AppError('Invalid credentials', 401);
@@ -75,6 +76,18 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) {
       throw new AppError('Invalid credentials', 401);
+    }
+
+    if (!user.isActive) {
+      throw new AppError('This account has been deactivated. Contact your moderator.', 403);
+    }
+
+    if (expectedRole && user.role !== expectedRole) {
+      const message =
+        expectedRole === Role.MODERATOR
+          ? 'This account is for viewer login. Use the viewer sign-in page.'
+          : 'This account is for moderator login. Use the moderator sign-in page.';
+      throw new AppError(message, 403);
     }
 
     const token = this.signToken({ id: user.id, organizationId: user.organizationId, role: user.role });

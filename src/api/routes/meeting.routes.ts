@@ -114,7 +114,7 @@ meetingRouter.get('/', meetingController.getMeetings);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-meetingRouter.post('/', meetingController.createMeeting);
+meetingRouter.post('/', requireRole([Role.MODERATOR]), meetingController.createMeeting);
 
 /**
  * @openapi

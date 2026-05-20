@@ -35,4 +35,18 @@ export class UserRepository {
   async create(data: Prisma.UserUncheckedCreateInput, tx?: Prisma.TransactionClient): Promise<User> {
     return (tx ?? prisma).user.create({ data });
   }
+
+  /**
+   * Updates a user by ID.
+   */
+  async update(
+    id: string,
+    data: Prisma.UserUpdateInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<User> {
+    return (tx ?? prisma).user.update({
+      where: { id },
+      data,
+    });
+  }
 }
