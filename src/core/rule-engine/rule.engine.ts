@@ -3,7 +3,7 @@ import { SseEventType, FusedChunk, ContextResult } from '../../types/sse-events'
 import { Logger } from '../../utils/logger';
 
 const log = new Logger('RuleEngine');
-// import { AlertRepository } from '../../infrastructure/database/repositories/alert.repository';
+import { AlertRepository } from '../../infrastructure/database/repositories/alert.repository';
 
 const FOCUS_THRESHOLD = 0.5;
 const SPEAKING_RATE_THRESHOLD = 0.4;
@@ -13,7 +13,7 @@ const WINDOW_SIZE = 6;
 const AGENDA_DEVIATION_THRESHOLD = parseFloat(process.env.AGENDA_DEVIATION_THRESHOLD ?? '0.5');
 const AGENDA_RECOVERY_THRESHOLD = parseFloat(process.env.AGENDA_RECOVERY_THRESHOLD ?? '0.5');
 
-// const alertRepository = new AlertRepository();
+const alertRepository = new AlertRepository();
 
 class RuleEngine {
   private static instance: RuleEngine;
@@ -74,6 +74,12 @@ class RuleEngine {
         offsetMs: result.offsetMs,
       });
       this.alertActive.set(alertKey, true);
+      alertRepository.createAlert({
+        meetingId,
+        eventType: 'AGENDA_DEVIATION',
+        severity: 'MEDIUM',
+        message: `Meeting deviated from agenda (context fit: ${(fit * 100).toFixed(0)}%)${result.reason ? ` — ${result.reason}` : ''}`,
+      }).catch(err => log.error('Failed to persist AGENDA_DEVIATION alert', { meetingId, err }));
     } else if (onTrack && active) {
       log.info('AGENDA_FIT triggered', {
         meetingId,
@@ -86,6 +92,12 @@ class RuleEngine {
         offsetMs: result.offsetMs,
       });
       this.alertActive.set(alertKey, false);
+      alertRepository.createAlert({
+        meetingId,
+        eventType: 'AGENDA_FIT',
+        severity: 'LOW',
+        message: `Meeting returned to agenda (context fit: ${(fit * 100).toFixed(0)}%)`,
+      }).catch(err => log.error('Failed to persist AGENDA_FIT alert', { meetingId, err }));
     }
   }
 
@@ -119,12 +131,12 @@ class RuleEngine {
         offsetMs: chunk.offsetMs,
       });
       this.alertActive.set(alertKey, true);
-      // await alertRepository.createAlert({
-      //   meetingId,
-      //   eventType: 'FOCUS_DROP',
-      //   severity: 'HIGH',
-      //   message: `Average focus dropped below threshold (avg: ${(avg * 100).toFixed(0)}%)`,
-      // });
+      alertRepository.createAlert({
+        meetingId,
+        eventType: 'FOCUS_DROP',
+        severity: 'HIGH',
+        message: `Average focus dropped below threshold (avg: ${(avg * 100).toFixed(0)}%)`,
+      }).catch(err => log.error('Failed to persist FOCUS_DROP alert', { meetingId, err }));
     } else if (avg >= FOCUS_THRESHOLD && active) {
       log.info('FOCUS_RECOVERED triggered', { meetingId, avg, offsetMs: chunk.offsetMs });
       sseManager.publish(meetingId, SseEventType.FOCUS_RECOVERED, {
@@ -132,6 +144,12 @@ class RuleEngine {
         offsetMs: chunk.offsetMs,
       });
       this.alertActive.set(alertKey, false);
+      alertRepository.createAlert({
+        meetingId,
+        eventType: 'FOCUS_RECOVERED',
+        severity: 'LOW',
+        message: `Focus recovered above threshold (avg: ${(avg * 100).toFixed(0)}%)`,
+      }).catch(err => log.error('Failed to persist FOCUS_RECOVERED alert', { meetingId, err }));
     }
   }
 
@@ -160,12 +178,12 @@ class RuleEngine {
         offsetMs: chunk.offsetMs,
       });
       this.alertActive.set(alertKey, true);
-      // await alertRepository.createAlert({
-      //   meetingId,
-      //   eventType: 'SPEAKING_RATE_DROP',
-      //   severity: 'MEDIUM',
-      //   message: `Average speaking rate dropped below threshold (avg: ${avg.toFixed(1)}%)`,
-      // });
+      alertRepository.createAlert({
+        meetingId,
+        eventType: 'SPEAKING_RATE_DROP',
+        severity: 'MEDIUM',
+        message: `Average speaking rate dropped below threshold (avg: ${avg.toFixed(1)}%)`,
+      }).catch(err => log.error('Failed to persist SPEAKING_RATE_DROP alert', { meetingId, err }));
     } else if (avg >= SPEAKING_RATE_THRESHOLD && active) {
       log.info('SPEAKING_RATE_RECOVERED triggered', { meetingId, avg, offsetMs: chunk.offsetMs });
       sseManager.publish(meetingId, SseEventType.SPEAKING_RATE_RECOVERED, {
@@ -173,6 +191,12 @@ class RuleEngine {
         offsetMs: chunk.offsetMs,
       });
       this.alertActive.set(alertKey, false);
+      alertRepository.createAlert({
+        meetingId,
+        eventType: 'SPEAKING_RATE_RECOVERED',
+        severity: 'LOW',
+        message: `Speaking rate recovered above threshold (avg: ${(avg * 100).toFixed(0)}%)`,
+      }).catch(err => log.error('Failed to persist SPEAKING_RATE_RECOVERED alert', { meetingId, err }));
     }
   }
 }
