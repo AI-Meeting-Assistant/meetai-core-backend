@@ -34,6 +34,8 @@ export interface FusedChunk {
       frameCount: number
     }>
   }
+  /** key = diarization speaker label (e.g. "SPEAKER_00"), value = video personId */
+  speakerMapping: Record<string, number> | null
 }
 
 export interface ContextResult {
