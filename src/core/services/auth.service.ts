@@ -16,6 +16,7 @@ interface AuthResult {
     email: string;
     role: string;
     organizationId: string;
+    organizationName: string;
   };
 }
 
@@ -63,6 +64,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         organizationId: user.organizationId,
+        organizationName: organizationName,
       },
     };
   }
@@ -84,6 +86,9 @@ export class AuthService {
 
     const token = this.signToken({ id: user.id, organizationId: user.organizationId, role: user.role });
 
+    // Fetch organization to get the name
+    const org = await this.organizationService.getOrganization(user.organizationId);
+
     return {
       token,
       user: {
@@ -92,6 +97,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         organizationId: user.organizationId,
+        organizationName: org.name,
       },
     };
   }

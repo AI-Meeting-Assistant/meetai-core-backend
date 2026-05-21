@@ -16,4 +16,12 @@ export class OrganizationService {
 
     return this.organizationRepository.create({ name: name.trim() }, tx);
   }
+
+  async getOrganization(orgId: string): Promise<Organization> {
+    const org = await this.organizationRepository.findById(orgId);
+    if (!org) {
+      throw new AppError('Organization not found', 404);
+    }
+    return org;
+  }
 }
