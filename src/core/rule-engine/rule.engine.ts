@@ -10,8 +10,8 @@ const SPEAKING_RATE_THRESHOLD = 0.4;
 const WINDOW_SIZE = 6;
 
 /** Single ~30s text analysis: alert when that window's score is below this. */
-const AGENDA_DEVIATION_THRESHOLD = parseFloat(process.env.AGENDA_DEVIATION_THRESHOLD ?? '0.5');
-const AGENDA_RECOVERY_THRESHOLD = parseFloat(process.env.AGENDA_RECOVERY_THRESHOLD ?? '0.5');
+const AGENDA_DEVIATION_THRESHOLD = parseFloat(process.env.AGENDA_DEVIATION_THRESHOLD ?? '0.4');
+const AGENDA_RECOVERY_THRESHOLD = parseFloat(process.env.AGENDA_RECOVERY_THRESHOLD ?? '0.4');
 
 const alertRepository = new AlertRepository();
 
@@ -55,8 +55,7 @@ class RuleEngine {
 
     const alertKey = `${meetingId}:AGENDA_DEVIATION`;
     const active = this.alertActive.get(alertKey) ?? false;
-    const offTopic =
-      result.onTopic === false || fit < AGENDA_DEVIATION_THRESHOLD;
+    const offTopic = fit < AGENDA_DEVIATION_THRESHOLD;
     const onTrack =
       result.onTopic === true && fit >= AGENDA_RECOVERY_THRESHOLD;
 
