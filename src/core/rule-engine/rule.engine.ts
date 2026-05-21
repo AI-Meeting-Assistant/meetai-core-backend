@@ -7,8 +7,11 @@ const log = new Logger('RuleEngine');
 
 const FOCUS_THRESHOLD = 0.5;
 const SPEAKING_RATE_THRESHOLD = 0.4;
-const AGENDA_DEVIATION_THRESHOLD = 0.5;
 const WINDOW_SIZE = 6;
+
+/** Single ~30s text analysis: alert when that window's score is below this. */
+const AGENDA_DEVIATION_THRESHOLD = parseFloat(process.env.AGENDA_DEVIATION_THRESHOLD ?? '0.5');
+const AGENDA_RECOVERY_THRESHOLD = parseFloat(process.env.AGENDA_RECOVERY_THRESHOLD ?? '0.5');
 
 // const alertRepository = new AlertRepository();
 
@@ -36,29 +39,54 @@ class RuleEngine {
   }
 
   evaluateContextResult(meetingId: string, result: ContextResult): void {
-    if (result.onTopic === false) {
-      log.info('AGENDA_DEVIATION triggered', { meetingId, contextFit: result.contextFit, onTopic: result.onTopic, offsetMs: result.offsetMs });
-      sseManager.publish(meetingId, SseEventType.AGENDA_DEVIATION, {
-        contextFit: result.contextFit,
+    this.evaluateAgendaRule(meetingId, result);
+  }
+
+  /**
+   * One adherence result per ~30s transcript window (6 chunks).
+   * If that window is off-topic, alert immediately — no multi-window averaging.
+   * Hysteresis only suppresses repeat AGENDA_DEVIATION until recovery.
+   */
+  private evaluateAgendaRule(meetingId: string, result: ContextResult): void {
+    const fit = result.contextFit;
+    if (fit === null || fit === undefined) {
+      return;
+    }
+
+    const alertKey = `${meetingId}:AGENDA_DEVIATION`;
+    const active = this.alertActive.get(alertKey) ?? false;
+    const offTopic =
+      result.onTopic === false || fit < AGENDA_DEVIATION_THRESHOLD;
+    const onTrack =
+      result.onTopic === true && fit >= AGENDA_RECOVERY_THRESHOLD;
+
+    if (offTopic && !active) {
+      log.info('AGENDA_DEVIATION triggered', {
+        meetingId,
+        contextFit: fit,
         onTopic: result.onTopic,
+        offsetMs: result.offsetMs,
+      });
+      sseManager.publish(meetingId, SseEventType.AGENDA_DEVIATION, {
+        contextFit: fit,
+        onTopic: false,
         reason: result.reason,
         offsetMs: result.offsetMs,
       });
-      // await alertRepository.createAlert({
-      //   meetingId,
-      //   eventType: 'AGENDA_DEVIATION',
-      //   severity: 'MEDIUM',
-      //   message: `Meeting is deviating from the agenda (context fit: ${(result.contextFit * 100).toFixed(0)}%)`,
-      // });
-    } else if (result.onTopic === true) {
-      log.info('AGENDA_FIT triggered', { meetingId, contextFit: result.contextFit, offsetMs: result.offsetMs });
-      sseManager.publish(meetingId, SseEventType.AGENDA_FIT, {
-        contextFit: result.contextFit,
-        onTopic: result.onTopic,
+      this.alertActive.set(alertKey, true);
+    } else if (onTrack && active) {
+      log.info('AGENDA_FIT triggered', {
+        meetingId,
+        contextFit: fit,
         offsetMs: result.offsetMs,
       });
+      sseManager.publish(meetingId, SseEventType.AGENDA_FIT, {
+        contextFit: fit,
+        onTopic: true,
+        offsetMs: result.offsetMs,
+      });
+      this.alertActive.set(alertKey, false);
     }
-    // onTopic === null means LLM returned an error — emit nothing
   }
 
   cleanup(meetingId: string): void {
