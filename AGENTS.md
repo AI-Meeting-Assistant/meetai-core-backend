@@ -262,3 +262,61 @@ Implement phases in order. Do not implement a later phase before its dependencie
 | **3** | Core AI Pipeline | Fusion Engine (sliding window), Rule Engine (threshold rules + `MeetingAlert` creation) |
 | **4** | Real-Time Delivery | WebSocket Gateway wired to Rule Engine output; SSE `/:id/events` wired to live alerts |
 | **5** | LLM Integration | LLM Client, post-meeting summary generation triggered on `COMPLETED` status |
+
+---
+
+## 14. Automated Test Coverage
+
+**Run:** `npm test` (Vitest + Supertest) · **Config:** `vitest.config.ts`, `tests/setup.ts`  
+**Full RAD/SDD map:** [`../docs/TEST_TRACEABILITY.md`](../docs/TEST_TRACEABILITY.md) · **Perf/KVKK manual:** [`../docs/MANUAL_PERF_CHECKS.md`](../docs/MANUAL_PERF_CHECKS.md)
+
+### Test layout
+
+```
+tests/
+├── unit/           # Pure logic, mocked Redis/DB/SSE
+├── integration/    # HTTP routes via app.ts (services mocked where heavy)
+├── smoke/          # Liveness only
+└── helpers/        # JWT test tokens
+```
+
+### Covered (automated)
+
+| Area | Test file(s) | What is verified |
+|------|----------------|------------------|
+| Stream ticket | `unit/ticket.service.test.ts` | Redis `SETEX` / reuse / `DEL`, TTL refresh loop side effects |
+| Data fusion | `unit/fusion.engine.test.ts` | Audio+video same bucket fuse, speaker mapping, context upsert |
+| Redis routing | `integration/fusion.registry.test.ts` | `:audio` → engine, `:text` → rule engine, unknown meeting ignored |
+| Rule engine | `unit/rule.engine.test.ts` | Focus drop, agenda deviation/recovery, SSE publish (mocked) |
+| JWT auth | `unit/requireAuth.test.ts` | Bearer + query token, 401 on missing/invalid |
+| RBAC | `unit/requireRole.test.ts` | MODERATOR vs VIEWER on protected routes |
+| Meetings API | `integration/meeting-crud.test.ts` | Empty list, title required (400), create with empty agenda |
+| Start meeting | `integration/meeting-start.test.ts` | 202 + ticket for MODERATOR; 403 for VIEWER |
+| Health | `smoke/health.test.ts` | `GET /api/v1/health` → 200 |
+
+### Not covered yet (and why)
+
+| Area | Planned / missing | Short reason |
+|------|-------------------|--------------|
+| `MeetingService` | `unit/meeting.service.test.ts` | Needs Prisma + fusion registry + ticket mocks — not written yet |
+| End meeting | same | `endMeeting`, timeline transcript, ticket clear — integration gap |
+| Recorded complete | `integration/meeting-recorded.test.ts` | Redis `recorded-complete` handler + `completeRecordedMeeting` |
+| Export PDF | `integration/meeting-export.test.ts` | Route + response shape; PDF bytes not asserted |
+| `AuthService` | `unit/auth.service.test.ts` | Register/login + bcrypt — covered indirectly via middleware only |
+| Timeline / alerts routes | — | Repository + controller integration not added |
+| SSE `/events` | — | Long-lived stream; manual smoke preferred |
+| LLM summary | — | External API; out of unit scope |
+| Real Redis / DB | — | All integration tests mock `MeetingService`; no test DB |
+| E2E latency (≤2s) | Manual | Flaky in CI — see `MANUAL_PERF_CHECKS.md` |
+
+### RAD quick status
+
+| UC | Auto | Notes |
+|----|------|-------|
+| UC-01 start/ticket | Partial | CRUD + start route; not full `MeetingService` |
+| UC-02 fusion | Yes | Engine + registry |
+| UC-03 alerts | Yes | Rule engine unit |
+| UC-04 report | Partial | No `endMeeting` test |
+| UC-05 export | No | Manual / missing test file |
+| UC-06 history | Partial | List + empty; delete not tested |
+| UC-07 recorded | No | Missing integration test |
