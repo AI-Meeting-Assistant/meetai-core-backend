@@ -74,7 +74,7 @@ model Meeting {
   user                 User          @relation("ModeratesMeetings", fields: [userId], references: [id])
   
   title                String
-  agenda               String?       @db.Text // Toplantı öncesi girileceği için isteğe bağlı (optional) olabilir
+  agenda               String?       @db.Text // Optional — filled in before the meeting starts
   timelineResolutionMs Int           @default(6000) @map("timeline_resolution_ms")
   meetingType          MeetingType   @default(LIVE) @map("meeting_type")
   status               MeetingStatus @default(SCHEDULED)
@@ -95,11 +95,22 @@ model TimelineData {
   meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   
   offsetMs   Int      @map("offset_ms")
-  payload    Json     // Focus, Emotion, Diarization JSON formatında
+  payload    Json     // Focus, Emotion, Diarization data in JSON format
   
   @@unique([meetingId, offsetMs])
   @@index([meetingId, offsetMs])
   @@map("TIMELINE_DATA")
+}
+
+model SuperAdmin {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("SUPER_ADMINS")
 }
 
 model MeetingAlert {

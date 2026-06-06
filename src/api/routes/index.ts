@@ -5,6 +5,7 @@ import { meetingRouter } from './meeting.routes';
 import { timelineRouter } from './timeline.routes';
 import { alertRouter } from './alert.routes';
 import { userRouter } from './user.routes';
+import { adminRouter } from './admin.routes';
 
 /**
  * API Router — Facade
@@ -21,3 +22,4 @@ apiRouter.use('/meetings', meetingRouter);
 apiRouter.use('/timeline', timelineRouter);
 apiRouter.use('/alerts', alertRouter);
 apiRouter.use('/users', userRouter);
+apiRouter.use('/admin', adminRouter);
