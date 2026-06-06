@@ -73,7 +73,7 @@ const options: swaggerJsdoc.Options = {
             title: { type: 'string' },
             agenda: { type: 'string', nullable: true },
             status: { type: 'string', enum: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED'] },
-            timelineResolutionMs: { type: 'integer', example: 2000 },
+            timelineResolutionMs: { type: 'integer', example: 6000 },
             aiSummary: { type: 'string', nullable: true },
             startedAt: { type: 'string', format: 'date-time', nullable: true },
             endedAt: { type: 'string', format: 'date-time', nullable: true },

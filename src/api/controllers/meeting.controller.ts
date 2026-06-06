@@ -59,7 +59,7 @@ export class MeetingController {
       if (meetingType === MeetingType.RECORDED) {
         timelineResolutionMs = 0;
       } else {
-        timelineResolutionMs = Number.isFinite(timelineResolutionMs) ? timelineResolutionMs : 2000;
+        timelineResolutionMs = Number.isFinite(timelineResolutionMs) ? timelineResolutionMs : 6000;
       }
 
       const result = await meetingService.createMeeting({

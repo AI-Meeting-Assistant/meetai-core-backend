@@ -86,8 +86,8 @@ meetingRouter.get('/', meetingController.getMeetings);
  *                 example: Review OKRs, assign owners, set deadlines
  *               timeResolutionMs:
  *                 type: integer
- *                 default: 2000
- *                 example: 2000
+ *                 default: 6000
+ *                 example: 6000
  *                 description: Optional timeline resolution in milliseconds
  *     responses:
  *       201:

@@ -75,7 +75,7 @@ model Meeting {
   
   title                String
   agenda               String?       @db.Text // Toplantı öncesi girileceği için isteğe bağlı (optional) olabilir
-  timelineResolutionMs Int           @default(2000) @map("timeline_resolution_ms") // Örn: 2000
+  timelineResolutionMs Int           @default(6000) @map("timeline_resolution_ms")
   meetingType          MeetingType   @default(LIVE) @map("meeting_type")
   status               MeetingStatus @default(SCHEDULED)
   aiSummary            String?       @db.Text @map("ai_summary")

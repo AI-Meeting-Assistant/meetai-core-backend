@@ -74,7 +74,7 @@ export class MeetingService {
       meetingType,
       status: isRecorded ? MeetingStatus.IN_PROGRESS : (data.status ?? MeetingStatus.SCHEDULED),
       startedAt: isRecorded ? new Date() : data.startedAt,
-      timelineResolutionMs: isRecorded ? 0 : (data.timelineResolutionMs ?? 2000),
+      timelineResolutionMs: isRecorded ? 0 : (data.timelineResolutionMs ?? 6000),
     };
 
     const meeting = await this.meetingRepository.create(createData);
