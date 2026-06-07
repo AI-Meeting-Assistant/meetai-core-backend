@@ -134,7 +134,6 @@ All routes are mounted under `/api/v1`. Protected routes require a `Authorizatio
 | PATCH | `/meetings/:id` | Yes | Update mutable meeting fields (`title`, `agenda`) — does not accept `status` |
 | POST | `/meetings/:id/start` | Yes (MODERATOR) | Transition `SCHEDULED → IN_PROGRESS`, stamp `startedAt`, issue stream ticket — returns 202 |
 | POST | `/meetings/:id/end` | Yes (MODERATOR) | Transition `IN_PROGRESS → COMPLETED`, stamp `endedAt`, clear stream ticket — returns 200 |
-| GET | `/meetings/:id/export` | Yes | Export meeting report (base64, format via `?format=pdf`) |
 | GET | `/meetings/:id/events` | Yes | SSE stream for live anomaly events |
 | GET | `/timeline/:meetingId` | Yes | Get all timeline data entries for a meeting |
 | GET | `/alerts/:meetingId` | Yes | Get all alerts triggered during a meeting |
@@ -301,7 +300,6 @@ tests/
 | `MeetingService` | `unit/meeting.service.test.ts` | Needs Prisma + fusion registry + ticket mocks — not written yet |
 | End meeting | same | `endMeeting`, timeline transcript, ticket clear — integration gap |
 | Recorded complete | `integration/meeting-recorded.test.ts` | Redis `recorded-complete` handler + `completeRecordedMeeting` |
-| Export PDF | `integration/meeting-export.test.ts` | Route + response shape; PDF bytes not asserted |
 | `AuthService` | `unit/auth.service.test.ts` | Register/login + bcrypt — covered indirectly via middleware only |
 | Timeline / alerts routes | — | Repository + controller integration not added |
 | SSE `/events` | — | Long-lived stream; manual smoke preferred |
@@ -317,6 +315,6 @@ tests/
 | UC-02 fusion | Yes | Engine + registry |
 | UC-03 alerts | Yes | Rule engine unit |
 | UC-04 report | Partial | No `endMeeting` test |
-| UC-05 export | No | Manual / missing test file |
+| UC-05 export | Manual | Electron client-side PDF (`ExportButton`); no backend route |
 | UC-06 history | Partial | List + empty; delete not tested |
 | UC-07 recorded | No | Missing integration test |

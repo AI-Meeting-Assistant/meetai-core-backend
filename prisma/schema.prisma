@@ -118,7 +118,7 @@ model MeetingAlert {
   meetingId  String   @map("meeting_id") @db.Uuid
   meeting    Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   
-  eventType  String   @map("event_type") // Örn: "LOW_FOCUS"
+  eventType  String   @map("event_type") // e.g. "LOW_FOCUS"
   severity   Severity
   message    String   @db.Text
   createdAt  DateTime @default(now()) @map("created_at")

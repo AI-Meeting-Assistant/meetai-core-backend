@@ -31,7 +31,7 @@ describe('GET /api/v1/timeline/:meetingId', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data).toHaveLength(2);
-    expect(getTimelineMock).toHaveBeenCalledWith('meet-1');
+    expect(getTimelineMock).toHaveBeenCalledWith('meet-1', 'org-test');
   });
 
   it('returns 200 with empty array when no data', async () => {

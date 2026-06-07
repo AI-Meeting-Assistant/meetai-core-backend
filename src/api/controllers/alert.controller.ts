@@ -14,14 +14,16 @@ export class AlertController {
    */
   async getAlerts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const orgId = req.user?.organizationId;
+      if (!orgId) throw new AppError('Organization context required', 403);
+
       const { meetingId } = req.params;
 
-      // Basic manual validation
       if (!meetingId) {
         throw new AppError('Meeting ID is required', 400);
       }
 
-      const alerts = await alertService.getAlertsByMeetingId(meetingId);
+      const alerts = await alertService.getAlertsByMeetingId(meetingId, orgId);
 
       log.info('Alerts fetched', { meetingId, count: alerts.length });
       res.status(200).json({

@@ -31,7 +31,7 @@ describe('GET /api/v1/alerts/:meetingId', () => {
     expect(res.body.success).toBe(true);
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data).toHaveLength(1);
-    expect(getAlertsMock).toHaveBeenCalledWith('meet-1');
+    expect(getAlertsMock).toHaveBeenCalledWith('meet-1', 'org-test');
   });
 
   it('returns 200 with empty array when no alerts', async () => {

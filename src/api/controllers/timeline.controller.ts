@@ -14,14 +14,16 @@ export class TimelineController {
    */
   async getTimeline(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const orgId = req.user?.organizationId;
+      if (!orgId) throw new AppError('Organization context required', 403);
+
       const { meetingId } = req.params;
-      
-      // Basic manual validation
+
       if (!meetingId) {
         throw new AppError('Meeting ID is required', 400);
       }
 
-      const timelineData = await timelineService.getMeetingTimeline(meetingId);
+      const timelineData = await timelineService.getMeetingTimeline(meetingId, orgId);
 
       log.info('Timeline fetched', { meetingId, count: timelineData.length });
       res.status(200).json({

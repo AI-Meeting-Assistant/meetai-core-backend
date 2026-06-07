@@ -72,7 +72,6 @@ Interactive docs: `http://localhost:3000/api/docs` (Swagger UI)
 | PATCH | `/meetings/:id` | Yes | Update meeting fields (title, agenda) |
 | POST | `/meetings/:id/start` | Yes (MODERATOR) | `SCHEDULED → IN_PROGRESS`, issues stream ticket |
 | POST | `/meetings/:id/end` | Yes (MODERATOR) | `IN_PROGRESS → COMPLETED`, clears stream ticket |
-| GET | `/meetings/:id/export` | Yes | Export meeting report (base64, `?format=pdf`) |
 | GET | `/meetings/:id/events` | Yes | SSE stream for live anomaly alerts |
 | GET | `/timeline/:meetingId` | Yes | Meeting timeline data |
 | GET | `/alerts/:meetingId` | Yes | Meeting alerts |

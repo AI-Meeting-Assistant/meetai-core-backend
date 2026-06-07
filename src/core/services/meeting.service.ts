@@ -91,7 +91,7 @@ export class MeetingService {
     };
   }
 
-  async getFullMeetingAnalysis(meetingId: string) {
+  async getFullMeetingAnalysis(meetingId: string, organizationId: string) {
     if (!meetingId) {
       throw new AppError('Meeting ID is required', 400);
     }
@@ -99,6 +99,10 @@ export class MeetingService {
     const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
     if (!meeting) {
       throw new AppError('Meeting not found', 404);
+    }
+
+    if (meeting.organizationId !== organizationId) {
+      throw new AppError('Forbidden: Meeting does not belong to your organization', 403);
     }
 
     const timeline = await this.timelineRepository.findAllByMeetingId(meetingId);
@@ -109,6 +113,21 @@ export class MeetingService {
       timeline,
       alerts
     };
+  }
+
+  async assertMeetingInOrganization(meetingId: string, organizationId: string): Promise<void> {
+    if (!meetingId) {
+      throw new AppError('Meeting ID is required', 400);
+    }
+
+    const meeting = await this.meetingRepository.findByIdWithDetails(meetingId);
+    if (!meeting) {
+      throw new AppError('Meeting not found', 404);
+    }
+
+    if (meeting.organizationId !== organizationId) {
+      throw new AppError('Forbidden: Meeting does not belong to your organization', 403);
+    }
   }
 
   async updateMeetingFields(
@@ -272,24 +291,5 @@ export class MeetingService {
 
     await this.streamTicketService.clearTicket(meetingId);
     sseManager.publish(meetingId, SseEventType.MEETING_FAILED, { meetingId, reason });
-  }
-
-  async exportMeetingReport(meetingId: string, format: string) {
-    if (!meetingId) {
-      throw new AppError('Meeting ID is required', 400);
-    }
-
-    const analysis = await this.getFullMeetingAnalysis(meetingId);
-
-    const mockReportData = `
-      Meeting Report
-      --------------
-      Title: ${analysis.meeting.title}
-      Status: ${analysis.meeting.status}
-      Alerts Triggered: ${analysis.alerts.length}
-      Recorded Events: ${analysis.timeline.length}
-    `;
-
-    return Buffer.from(mockReportData).toString('base64');
   }
 }

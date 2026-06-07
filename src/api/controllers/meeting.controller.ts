@@ -104,7 +104,7 @@ export class MeetingController {
       const { id } = req.params;
       if (!id) throw new AppError('Meeting ID is required', 400);
 
-      const meetingDetails = await meetingService.getFullMeetingAnalysis(id);
+      const meetingDetails = await meetingService.getFullMeetingAnalysis(id, orgId);
 
       log.info('Meeting analysis fetched', { meetingId: id, orgId });
       res.status(200).json({
@@ -202,33 +202,6 @@ export class MeetingController {
   }
 
   /**
-   * GET /:id/export
-   * Exports the data of a completed meeting as a report
-   */
-  async exportMeeting(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const orgId = req.user?.organizationId;
-      if (!orgId) throw new AppError('Organization context required', 403);
-
-      const { id } = req.params;
-      if (!id) throw new AppError('Meeting ID is required', 400);
-
-      const format = req.query.format as string || 'pdf';
-
-      const exportData = await meetingService.exportMeetingReport(id, format);
-
-      log.info('Meeting export generated', { meetingId: id, format });
-      res.status(200).json({
-        success: true,
-        data: exportData,
-        message: 'Export generated successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
    * POST /:id/start
    * Validates org/user/status, transitions meeting to IN_PROGRESS, issues a stream ticket.
    */
@@ -265,6 +238,8 @@ export class MeetingController {
 
       const { id } = req.params;
       if (!id) throw new AppError('Meeting ID is required', 400);
+
+      await meetingService.assertMeetingInOrganization(id, orgId);
 
       // Set headers for Server-Sent Events
       res.setHeader('Content-Type', 'text/event-stream');

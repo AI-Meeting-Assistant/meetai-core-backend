@@ -8,13 +8,11 @@ const {
   updateMeetingFieldsMock,
   deleteMeetingMock,
   endMeetingMock,
-  exportMeetingMock,
 } = vi.hoisted(() => ({
   getMeetingByIdMock: vi.fn(),
   updateMeetingFieldsMock: vi.fn(),
   deleteMeetingMock: vi.fn(),
   endMeetingMock: vi.fn(),
-  exportMeetingMock: vi.fn(),
 }));
 
 vi.mock('../../src/core/services/meeting.service', () => ({
@@ -24,9 +22,9 @@ vi.mock('../../src/core/services/meeting.service', () => ({
     startMeeting: vi.fn(),
     endMeeting: endMeetingMock,
     getFullMeetingAnalysis: getMeetingByIdMock,
+    assertMeetingInOrganization: vi.fn().mockResolvedValue(undefined),
     updateMeetingFields: updateMeetingFieldsMock,
     deleteMeeting: deleteMeetingMock,
-    exportMeetingReport: exportMeetingMock,
     completeRecordedMeeting: vi.fn(),
     failRecordedMeeting: vi.fn(),
   })),
@@ -50,7 +48,7 @@ describe('GET /api/v1/meetings/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(getMeetingByIdMock).toHaveBeenCalledWith('meet-1');
+    expect(getMeetingByIdMock).toHaveBeenCalledWith('meet-1', 'org-test');
   });
 
   it('returns 401 without token', async () => {
@@ -136,31 +134,5 @@ describe('POST /api/v1/meetings/:id/end', () => {
 
     expect(res.status).toBe(403);
     expect(endMeetingMock).not.toHaveBeenCalled();
-  });
-});
-
-describe('GET /api/v1/meetings/:id/export', () => {
-  beforeEach(() => exportMeetingMock.mockClear());
-
-  it('returns 200 with export data', async () => {
-    exportMeetingMock.mockResolvedValue('base64encodedpdf==');
-
-    const res = await request(app)
-      .get('/api/v1/meetings/meet-1/export')
-      .set('Authorization', `Bearer ${moderatorToken()}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data).toBe('base64encodedpdf==');
-    expect(exportMeetingMock).toHaveBeenCalledWith('meet-1', 'pdf');
-  });
-
-  it('passes format query param to service', async () => {
-    exportMeetingMock.mockResolvedValue('data');
-
-    await request(app)
-      .get('/api/v1/meetings/meet-1/export?format=pdf')
-      .set('Authorization', `Bearer ${moderatorToken()}`);
-
-    expect(exportMeetingMock).toHaveBeenCalledWith('meet-1', 'pdf');
   });
 });

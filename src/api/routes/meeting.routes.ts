@@ -399,59 +399,6 @@ meetingRouter.post('/:id/end', requireRole([Role.MODERATOR]), meetingController.
 
 /**
  * @openapi
- * /meetings/{id}/export:
- *   get:
- *     tags:
- *       - Meetings
- *     summary: Export meeting report
- *     description: Exports the meeting analysis data as a base64-encoded report.
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The meeting ID
- *       - in: query
- *         name: format
- *         schema:
- *           type: string
- *           enum: [pdf]
- *           default: pdf
- *         description: Export format
- *     responses:
- *       200:
- *         description: Export generated successfully
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/SuccessResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: string
- *                       description: Base64-encoded report
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       404:
- *         description: Meeting not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-meetingRouter.get('/:id/export', meetingController.exportMeeting);
-
-/**
- * @openapi
  * /meetings/{id}/events:
  *   get:
  *     tags:
