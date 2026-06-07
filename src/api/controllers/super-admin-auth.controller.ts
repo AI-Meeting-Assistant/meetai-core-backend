@@ -7,6 +7,10 @@ const adminAuthService = new SuperAdminAuthService();
 const log = new Logger('SuperAdminAuthController');
 
 export class SuperAdminAuthController {
+  /**
+   * POST /admin/auth/login
+   * Authenticates a super admin and returns a JWT token.
+   */
   async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email, password } = req.body;

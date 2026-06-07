@@ -15,6 +15,9 @@ declare global {
   }
 }
 
+/**
+ * Validates a super-admin JWT token and attaches the payload to req.admin.
+ */
 export const requireSuperAdmin = (req: Request, _res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;

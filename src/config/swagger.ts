@@ -118,6 +118,20 @@ const options: swaggerJsdoc.Options = {
             user: { $ref: '#/components/schemas/User' },
           },
         },
+        AdminAuthResult: {
+          type: 'object',
+          properties: {
+            token: { type: 'string' },
+            admin: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                fullName: { type: 'string' },
+                email: { type: 'string', format: 'email' },
+              },
+            },
+          },
+        },
         MeetingAnalysis: {
           type: 'object',
           properties: {
