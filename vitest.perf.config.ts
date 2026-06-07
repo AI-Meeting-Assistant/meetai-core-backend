@@ -6,13 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],
-    include: ['tests/**/*.test.ts'],
-    exclude: ['tests/perf/**'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
-      include: ['src/**/*.ts'],
-    },
+    include: ['tests/perf/**/*.test.ts'],
   },
   resolve: {
     alias: {

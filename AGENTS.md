@@ -266,7 +266,7 @@ Implement phases in order. Do not implement a later phase before its dependencie
 
 ## 14. Automated Test Coverage
 
-**Run:** `npm test` (Vitest + Supertest) · **Config:** `vitest.config.ts`, `tests/setup.ts`  
+**Run:** `npm test` (Vitest + Supertest) · **Perf:** `npm run test:perf` (`tests/perf/`, `vitest.perf.config.ts`) · **Config:** `vitest.config.ts`, `tests/setup.ts`  
 **Full RAD/SDD map:** [`../docs/TEST_TRACEABILITY.md`](../docs/TEST_TRACEABILITY.md) · **Perf/KVKK manual:** [`../docs/MANUAL_PERF_CHECKS.md`](../docs/MANUAL_PERF_CHECKS.md)
 
 ### Test layout
