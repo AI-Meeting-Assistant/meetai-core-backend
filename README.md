@@ -53,6 +53,8 @@ npm run dev
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm start` | Run compiled output |
 
+The service image builds independently from this repository with `docker build -t meetai-core-backend .`.
+
 ---
 
 ## API
